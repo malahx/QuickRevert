@@ -18,7 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #### What is it ?
 
-QuickRevert is a very small plugin which add the possibility to revert after a quickload
+QuickRevert is a very small plugin which add the possibility to revert after a quickload.
+
+#### How to install it ?
+
+Unzip all files. Put the SRL folder in your KSP/GameData folder.
 
 #### How to uninstall it ?
 
