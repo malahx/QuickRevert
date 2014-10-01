@@ -22,7 +22,7 @@ QuickRevert is a very small plugin which add the possibility to revert after a q
 
 #### How to install it ?
 
-Unzip all files. Put the SRL folder in your KSP/GameData folder.
+Unzip all files. Put the QuickRevert folder in your KSP/GameData folder.
 
 #### How to uninstall it ?
 
