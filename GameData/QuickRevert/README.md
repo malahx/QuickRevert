@@ -1,5 +1,5 @@
 ﻿#### QuickRevert
-#### A plugin for Kerbal Space Program 0.24.2
+#### A plugin for Kerbal Space Program 0.25.0
 #### Copyright 2014 Malah
 
 This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #### What is it ?
 
-QuickRevert is a very small plugin which add the possibility to revert after a quickload.
+QuickRevert is a small plugin which add the possibility to keep the revert function.
+
+#### How does it work ?
+
+You will lose the revert function if:
+- you launch a new vessel,
+- you stand too long (15 mins) outside the vessel (space center, tracking station, another vessel ...), 
+
+You will keep the revert function if:
+- you go to the space center or on another vessel,
+- you make a quickload,
+- KSP crash,
+- you stop your game,
+- you are on EVA.
 
 #### How to install it ?
 
@@ -30,17 +43,27 @@ Delete the QuickRevert folder in your KSP/GameData folder.
 
 #### Changelog
 
+v1.10 - 2014.10.08
+- New: Added a delay to keep the revert function while you are outside the vessel.
+- New: Added the revert function after a KSP crash,
+- Fix: Some minor bug,
+- Updated to 0.25
+
 v1.00 - 2014.10.01
 Initial release
 
 #### Planned updates/new features
 
-N/A
+No new features planned.
 
 #### Thanks !
 
+to all mods developers which render this game really huge,
+to my friend Neimad who corrects my bad english ...
 to Squad for this awesome game.
 
 #### Links
-
+http://forum.kerbalspaceprogram.com/threads/95168
+https://kerbalstuff.com/mod/237
+http://kerbal.curseforge.com/ksp-mods/224621
 https://github.com/malahx/QuickRevert
