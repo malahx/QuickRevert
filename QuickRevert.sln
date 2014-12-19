@@ -16,5 +16,6 @@ Global
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = QuickRevert.csproj
+		version = 1.11
 	EndGlobalSection
 EndGlobal

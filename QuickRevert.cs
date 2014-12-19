@@ -17,23 +17,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 using System;
-using KSP;
+using System.IO;
 using UnityEngine;
 
 namespace QuickRevert {
-	[KSPAddon(KSPAddon.Startup.MainMenu | KSPAddon.Startup.EditorAny | KSPAddon.Startup.TrackingStation | KSPAddon.Startup.Flight | KSPAddon.Startup.SpaceCentre, false)]
-	public class QuickRevert : MonoBehaviour {
+	[KSPAddon(KSPAddon.Startup.EveryScene, false)]
+	public class QuickRevert : UnityEngine.MonoBehaviour {
 
 		// Initialiser les variables
-		public const string VERSION = "1.10";
+		public static string VERSION = "1.11";
+		public static string MOD = "QuickRevert";
 
 		private static bool isdebug = true;
 		private static bool ready = false;
 		public static string Path_settings = KSPUtil.ApplicationRootPath + "GameData/QuickRevert/PluginData/QuickRevert/";
+		public static string Filename_flightsave = "{0}-flightsave.txt";
+		public static string Filename_flightstate = "{0}-flightstate.txt";
 		private static double Time_to_Keep = 900;
 		private static double Time_to_Save = 60;
 		private static double last_scrMSG = 0;
 
+		[KSPField(isPersistant = true)]
+		public static string Save_newShipToLoadPath;
+		[KSPField(isPersistant = true)]
+		public static string Save_newShipFlagURL;
 		[KSPField(isPersistant = true)]
 		public static Game Save_FlightStateCache;
 		[KSPField(isPersistant = true)]
@@ -46,6 +53,63 @@ namespace QuickRevert {
 		private static Guid Save_Vessel_Guid = Guid.Empty;
 		[KSPField(isPersistant = true)]
 		private static double Save_Time = 0;
+
+		public static string Path_flightsave {
+			get {
+				if (HighLogic.LoadedSceneIsGame) {
+					return string.Format (Path_settings + Filename_flightsave, HighLogic.SaveFolder);
+				}
+				return string.Empty;
+			}
+		}
+		public static string Path_flightstate {
+			get {
+				if (HighLogic.LoadedSceneIsGame) {
+					return string.Format (Path_settings + Filename_flightstate, HighLogic.SaveFolder);
+				}
+				return string.Empty;
+			}
+		}
+
+		public static bool isHardSaved {
+			get {
+				if (HighLogic.LoadedSceneIsGame) {
+					return File.Exists (Path_flightsave) || File.Exists (string.Format (Path_flightstate));
+				}
+				return false;
+			}
+		}
+
+		public static bool isSaved {
+			get {
+				if (HighLogic.LoadedSceneIsGame) {
+					return Save_newShipToLoadPath != string.Empty && Save_newShipFlagURL != string.Empty && Save_FlightStateCache != null && Save_PostInitState != null && Save_PreLaunchState != null && Save_ShipConfig != null && Save_Vessel_Guid != Guid.Empty && Save_Time != 0;
+				}
+				return false;
+			}
+		}
+
+		public static bool ConfigNodeHasSaved(ConfigNode nodes) {
+			if (HighLogic.LoadedSceneIsGame) {
+				return nodes.HasValue("Save_newShipFlagURL") && nodes.HasValue("Save_newShipToLoadPath") && nodes.HasNode("Save_FlightStateCache") && nodes.HasNode("Save_PostInitState") && nodes.HasNode("Save_PreLaunchState") && nodes.HasNode("Save_ShipConfig");
+			}
+			return false;
+		}
+
+		public static bool CanbeSaved {
+			get {
+				if (HighLogic.LoadedSceneIsFlight) {
+					return FlightDriver.newShipFlagURL != string.Empty && FlightDriver.newShipToLoadPath != string.Empty && FlightDriver.FlightStateCache != null && FlightDriver.PostInitState != null && FlightDriver.PreLaunchState != null && ShipConstruction.ShipConfig != null;
+				}
+				return false;
+			}
+		}
+
+		public static bool FlightStateisCompatible {
+			get {
+				return Save_FlightStateCache.compatible;
+			}
+		}
 
 		public static bool VesselExist(Guid _guid, out Vessel vessel) {
 			vessel = null;
@@ -87,41 +151,52 @@ namespace QuickRevert {
 		private void Awake() {
 			GameEvents.onFlightReady.Add (OnFlightReady);
 			GameEvents.onLevelWasLoaded.Add (OnLevelWasLoaded);
+			GameEvents.onGameSceneLoadRequested.Add (OnGameSceneLoadRequested);
+		}
+
+		// Charger ou supprimer la sauvegarde existante
+		private void Start() {
+			if (HighLogic.LoadedScene == GameScenes.SPACECENTER) {
+				if (isHardSaved) {
+					if (!isSaved) {
+						Load ();
+						return;
+					}
+				}
+			}
+			if (HighLogic.LoadedScene == GameScenes.MAINMENU) {
+				Reset ();
+			}
 		}
 
 		// Supprimer les évènements
 		private void OnDestroy() {
 			GameEvents.onFlightReady.Remove (OnFlightReady);
 			GameEvents.onLevelWasLoaded.Remove (OnLevelWasLoaded);
+			GameEvents.onGameSceneLoadRequested.Remove (OnGameSceneLoadRequested);
 		}
 
+		// Gestion du temps restant
 		private void Update() {
 			if (HighLogic.LoadedSceneIsGame && ready) {
-				if (HighLogic.CurrentGame.Parameters.Flight.CanRestart) {
-					if (Save_Vessel_Guid != Guid.Empty) {
-						Vessel _vessel;
-						if (VesselExist (Save_Vessel_Guid, out _vessel)) {
-							if (!isPrelaunch (_vessel)) {
-								if (!HighLogic.LoadedSceneIsFlight) {
-									if (Save_Time == 0) {
-										Save_Time = Planetarium.GetUniversalTime ();
-										Save_time ();
+				if (isSaved) {
+					Vessel _vessel;
+					if (VesselExist (Save_Vessel_Guid, out _vessel)) {
+						if (!isPrelaunch (_vessel)) {
+							if (!HighLogic.LoadedSceneIsFlight) {
+								if ((Planetarium.GetUniversalTime () - Save_Time) > Time_to_Keep) {
+									disable_Revert ();
+								}
+							} else {
+								if (FlightGlobals.ready) {
+									if (FlightGlobals.ActiveVessel.id == Save_Vessel_Guid || FlightGlobals.ActiveVessel.isEVA || _vessel.loaded) {
+										if ((Planetarium.GetUniversalTime () - Save_Time) > Time_to_Save) {
+											Save_Time = Planetarium.GetUniversalTime ();
+											Save_time ();
+										}
 									} else {
 										if ((Planetarium.GetUniversalTime () - Save_Time) > Time_to_Keep) {
 											disable_Revert ();
-										}
-									}
-								} else {
-									if (FlightGlobals.ready) {
-										if (FlightGlobals.ActiveVessel.id == Save_Vessel_Guid || FlightGlobals.ActiveVessel.isEVA) {
-											if ((Planetarium.GetUniversalTime () - Save_Time) > Time_to_Save && Save_Time != 0) {
-												Save_Time = Planetarium.GetUniversalTime ();
-												Save_time ();
-											}
-										} else {
-											if ((Planetarium.GetUniversalTime () - Save_Time) > Time_to_Keep) {
-												disable_Revert ();
-											}
 										}
 									}
 								}
@@ -137,11 +212,11 @@ namespace QuickRevert {
 			if (ready && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedScene == GameScenes.SPACECENTER || HighLogic.LoadedScene == GameScenes.TRACKSTATION)) {
 				if (HighLogic.CurrentGame.Parameters.Flight.CanRestart) {
 					if ((Planetarium.GetUniversalTime () - last_scrMSG) > 60) {
-						if (Save_Time != 0 && Save_Vessel_Guid != Guid.Empty) {
+						if (isSaved) {
 							Vessel _vessel;
 							if (VesselExist (Save_Vessel_Guid, out _vessel)) {
 								if (HighLogic.LoadedSceneIsFlight) {
-									if (FlightGlobals.ActiveVessel.id == Save_Vessel_Guid) {
+									if (FlightGlobals.ActiveVessel.id == Save_Vessel_Guid || FlightGlobals.ActiveVessel.isEVA) {
 										return;
 									}
 								}
@@ -159,77 +234,42 @@ namespace QuickRevert {
 
 		// Activer le revert
 		private void OnFlightReady() {
-			if (FlightGlobals.ActiveVessel.situation == Vessel.Situations.PRELAUNCH) {
+			if (FlightGlobals.ActiveVessel.situation == Vessel.Situations.PRELAUNCH && !isSaved && CanbeSaved) {
 				disable_Revert ();
-				try {
-					Save_FlightStateCache = FlightDriver.FlightStateCache;
-				} catch {
-					Debug ("Can't save Save_FlightStateCache !");
-					Reset ();
-					return;
-				}
-				try {
-					Save_PostInitState = FlightDriver.PostInitState;
-				} catch {
-					Debug ("Can't save Save_PostInitState !");
-					Reset ();
-					return;
-				}
-				try {
+				Save_FlightStateCache = FlightDriver.FlightStateCache;
+				Save_PostInitState = FlightDriver.PostInitState;
+				if (FlightDriver.PreLaunchState != null) {
 					Save_PreLaunchState = FlightDriver.PreLaunchState;
-				} catch {
-					Debug ("Can't save Save_PreLaunchState try an other solution !");
-					try {
-						Save_PreLaunchState = new GameBackup(Save_FlightStateCache);
-					} catch {
-						Debug ("Can't save Save_PreLaunchState !");
-					}
+				} else {
+					Save_PreLaunchState = new GameBackup(Save_FlightStateCache);
 				}
-				try {
-					Save_ShipConfig = ShipConstruction.ShipConfig;
-				} catch {
-					Debug ("Can't save Save_ShipConfig !");
-					Reset ();
-				}
+				Save_ShipConfig = ShipConstruction.ShipConfig;
+				Save_newShipFlagURL = FlightDriver.newShipFlagURL;
+				Save_newShipToLoadPath = FlightDriver.newShipToLoadPath;
 				Save_Vessel_Guid = FlightGlobals.ActiveVessel.id;
 				Save_Time = Planetarium.GetUniversalTime();
-				Debug("Revert saved");
+				Log("Revert saved");
 				Save();
 			} else {
-				if (Save_Vessel_Guid != Guid.Empty && HighLogic.CurrentGame.Parameters.Flight.CanRestart) {
-					if (FlightGlobals.ActiveVessel.id == Save_Vessel_Guid) {
-						try {  
+				if (isSaved && HighLogic.CurrentGame.Parameters.Flight.CanRestart) {
+					Vessel _vessel;
+					if (VesselExist (Save_Vessel_Guid, out _vessel)) {
+						if (FlightGlobals.ActiveVessel.id == Save_Vessel_Guid || FlightGlobals.ActiveVessel.isEVA || _vessel.loaded) {
 							FlightDriver.FlightStateCache = Save_FlightStateCache;
-						} catch {
-							Debug ("Can't load Save_FlightStateCache !");
-							Reset ();
-							return;
-						}
-						try { 
 							FlightDriver.PostInitState = Save_PostInitState;
 							FlightDriver.CanRevertToPostInit = true;
-						} catch {
-							FlightDriver.CanRevertToPostInit = false;
-							Debug ("Can't load Save_PostInitState !");
-							Reset ();
-							return;
-						}
-						try { 
 							FlightDriver.PreLaunchState = Save_PreLaunchState;
 							FlightDriver.CanRevertToPrelaunch = true;
-						} catch {
-							FlightDriver.CanRevertToPrelaunch = false;
-							Debug ("Can't load Save_PreLaunchState !");
-						}
-						try { 
+							FlightDriver.newShipToLoadPath = Save_newShipToLoadPath;
+							FlightDriver.newShipFlagURL = Save_newShipFlagURL;
 							ShipConstruction.ShipConfig = Save_ShipConfig;
-						} catch {
-							FlightDriver.CanRevertToPrelaunch = false;
-							Debug ("Can't load Save_ShipConfig !");
+							Save_Time = Planetarium.GetUniversalTime ();
+							Log ("Revert loaded");
+							Save_time ();
 						}
-						Save_Time = Planetarium.GetUniversalTime ();
-						Save_time ();
-						Debug ("Revert loaded");
+					} else {
+						Warning ("Vessel of the flightstate doesn't exists (OnFlightReady).");
+						Reset ();
 					}
 				}
 			}
@@ -239,82 +279,77 @@ namespace QuickRevert {
 		public static void disable_Revert() {
 			Vessel _vessel;
 			if (VesselExist (Save_Vessel_Guid, out _vessel)) {
-				Debug ("You have lost the possibility to revert: " + _vessel.name);
+				Log (string.Format("You have lost the possibility to revert: {0}", _vessel.name));
 				if (HighLogic.CurrentGame.Parameters.Flight.CanRestart) {
-					if (HighLogic.LoadedSceneIsFlight) {
-						if (FlightGlobals.ActiveVessel.id == Save_Vessel_Guid) {
-							if (isPrelaunch (_vessel)) {
-								goto ONE;
-							}
-						}
-					}
-					ScreenMessages.PostScreenMessage ("[QuickRevert] You have lost the possibility to revert the last launch.", 10, ScreenMessageStyle.UPPER_LEFT);
+					ScreenMessages.PostScreenMessage (string.Format("[QuickRevert] You have lost the possibility to revert the last launch ({0}).", _vessel.name), 10, ScreenMessageStyle.UPPER_LEFT);
+					Reset ();
 				}
 			}
-			ONE:
-			Reset ();
 		}
 
-		// Charger la sauvegarde en cas d'arrêt de KSP
+		// Supprimer la sauvegarde si le vaisseau n'existe pas.
 		private void OnLevelWasLoaded(GameScenes gamescenes) {
 			ready = true;
-			if (HighLogic.LoadedScene == GameScenes.SPACECENTER) {
-				if (System.IO.File.Exists (Path_settings + HighLogic.SaveFolder + "-flight.txt")) {
-					if (Save_Vessel_Guid == Guid.Empty) {
-						Load ();
+			if (HighLogic.LoadedSceneIsGame) {
+				if (isSaved) {
+					Vessel _vessel;
+					if (!VesselExist (Save_Vessel_Guid, out _vessel)) {
+						Warning ("Vessel of the flightstate doesn't exists (OnLevelWasLoaded).");
+						Reset ();
+						return;
 					}
 				}
 			}
-			if (HighLogic.LoadedScene == GameScenes.MAINMENU) {
-				Save_Vessel_Guid = Guid.Empty;
-				Save_Time = 0;
+		}
+
+		// Supprimer la sauvegarde du revert après un revert to editor.
+		private void OnGameSceneLoadRequested(GameScenes gamescenes) {
+			if (gamescenes == GameScenes.EDITOR && HighLogic.LoadedSceneIsFlight) {
+				if (isSaved) {
+					Warning ("Revert to EDITOR.");
+					Reset ();
+				}
 			}
 		}
 
 		// Afficher les messages de debug
-		private static void Debug(string _string) {
+		private static void Log(string _string) {
 			if (isdebug) {
-				print ("QuickRevert" + VERSION + ": " + _string);
+				Debug.Log (MOD + "(" + VERSION + "): " + _string);
+			}
+		}
+		private static void Warning(string _string) {
+			if (isdebug) {
+				Debug.LogWarning (MOD + "(" + VERSION + "): " + _string);
 			}
 		}
 
 		// Sauvegarder les paramètres
 		public static void Save() {
-			if (Save_Vessel_Guid != Guid.Empty) {
+			if (isSaved) {
 				Vessel _vessel;
 				if (VesselExist (Save_Vessel_Guid, out _vessel)) { 
 					Save_time();
-					try {	
-					GamePersistence.SaveGame (Save_FlightStateCache, "QuickRevert_FlightStateCache", HighLogic.SaveFolder, SaveMode.OVERWRITE);
-					} catch {
-						Debug ("Can't persistent save FlightStateCache !");
-						goto TWO;
-					}
+					ConfigNode _flightstate = new ConfigNode ();
+					ConfigNode _flightstatecache = new ConfigNode ();
+					Save_FlightStateCache.Save (_flightstatecache);
+					_flightstate.AddNode ("Save_FlightStateCache").AddData (_flightstatecache);
+					_flightstate.AddNode ("Save_PreLaunchState").AddData (Save_PreLaunchState.Config);
+					_flightstate.AddNode ("Save_PostInitState").AddData (Save_PostInitState.Config);
+					_flightstate.AddNode ("Save_ShipConfig").AddData (Save_ShipConfig);
+					_flightstate.AddValue ("Save_newShipFlagURL", Save_newShipFlagURL);
+					_flightstate.AddValue ("Save_newShipToLoadPath", Save_newShipToLoadPath);
 					try {
-						GamePersistence.SaveGame (Save_PostInitState, "QuickRevert_PostInitState", HighLogic.SaveFolder, SaveMode.OVERWRITE);
-					} catch {
-						Debug ("Can't persistent save PostInitState !");
-						goto TWO;
+						_flightstate.Save (Path_flightstate);
+					} catch (Exception e) {
+						Warning (string.Format ("Can't hard save flight state: {0}", e));
+						goto Reset;
 					}
-					try {
-						GamePersistence.SaveGame (Save_PreLaunchState, "QuickRevert_PreLaunchState", HighLogic.SaveFolder, SaveMode.OVERWRITE);
-					} catch {
-						try {
-							GamePersistence.SaveGame (new GameBackup(Save_FlightStateCache), "QuickRevert_PreLaunchState", HighLogic.SaveFolder, SaveMode.OVERWRITE);
-						} catch {
-							Debug ("Can't persistent save PreLaunchState !");
-						}
-					}
-					try {
-						Save_ShipConfig.Save (Path_settings + HighLogic.SaveFolder + "-Save_ShipConfig.txt");
-					} catch {
-						Debug ("Can't persistent save ShipConfig !");
-					}
-					Debug("Save");
+					Log("Hard save");
 					return;
 				}
 			}
-			TWO:
+			Reset:
 			Reset ();
 		}
 
@@ -323,48 +358,76 @@ namespace QuickRevert {
 			ConfigNode _temp = new ConfigNode();
 			_temp.AddValue ("Save_Time", Save_Time);
 			_temp.AddValue ("Save_Vessel_Guid", Save_Vessel_Guid);
-			_temp.Save (Path_settings + HighLogic.SaveFolder + "-flight.txt");
-			Debug ("Save UniversalTime");
+			_temp.Save (Path_flightsave);
+			Log ("Save UniversalTime and Active Vessel.");
 		}
 
 		// Chargement des paramètres
 		public static void Load() {
-			if (System.IO.File.Exists (Path_settings + HighLogic.SaveFolder + "-flight.txt")) {
-				ConfigNode _temp = ConfigNode.Load (Path_settings + HighLogic.SaveFolder + "-flight.txt");
-				Save_Time = Convert.ToDouble(_temp.GetValue ("Save_Time"));
-				Save_Vessel_Guid = new Guid(_temp.GetValue ("Save_Vessel_Guid"));
-				Vessel _vessel;
-				if (!VesselExist(Save_Vessel_Guid, out _vessel)) {
-					Reset ();
-					return;
+			if (isHardSaved) {
+				ConfigNode _flightsave = ConfigNode.Load (Path_flightsave);
+				if (!_flightsave.HasValue("Save_Time") || !_flightsave.HasValue("Save_Vessel_Guid")) {
+					Warning ("No time or no vessel saved.");
+					goto Reset;
 				}
-				try {
-					Save_FlightStateCache = GamePersistence.LoadGame ("QuickRevert_FlightStateCache", HighLogic.SaveFolder, true, false);
-					Save_PostInitState = new GameBackup(GamePersistence.LoadGame ("QuickRevert_PostInitState", HighLogic.SaveFolder, true, false));
-					Save_PreLaunchState = new GameBackup(GamePersistence.LoadGame ("QuickRevert_PreLaunchState", HighLogic.SaveFolder, true, false));
-					Save_ShipConfig = ConfigNode.Load (Path_settings + HighLogic.SaveFolder + "-Save_ShipConfig.txt");
-				} catch {
-					Debug ("Can't load QuickRevert !");
-					Reset ();
+				Save_Vessel_Guid = new Guid(_flightsave.GetValue ("Save_Vessel_Guid"));
+				Save_Time = Convert.ToDouble(_flightsave.GetValue ("Save_Time"));
+				if ((Planetarium.GetUniversalTime () - Save_Time) > Time_to_Keep) {
+					Warning ("Time limit, stop the loading.");
+					goto Reset;
 				}
-				Debug("Load");
+				ConfigNode _flightstate = ConfigNode.Load (Path_flightstate);
+				if (ConfigNodeHasSaved (_flightstate)) {
+					Save_FlightStateCache = new Game(_flightstate.GetNode ("Save_FlightStateCache"));
+					if (!FlightStateisCompatible) {
+						Warning ("Flight State Cache is not compatible.");
+						goto Reset;
+					}
+					Game _game = new Game (_flightstate.GetNode ("Save_PostInitState"));
+					if (!_game.compatible) {
+						Warning ("Post Init State is not compatible.");
+						goto Reset;
+					}
+					Save_PostInitState = new GameBackup (_game);
+					_game = new Game (_flightstate.GetNode ("Save_PreLaunchState"));
+					if (!_game.compatible) {
+						Warning ("Pre Launch State is not compatible.");
+						goto Reset;
+					}
+					Save_PreLaunchState = new GameBackup (_game);
+					Save_ShipConfig = _flightstate.GetNode ("Save_ShipConfig");
+					Save_newShipFlagURL = _flightstate.GetValue ("Save_newShipFlagURL");
+					Save_newShipToLoadPath = _flightstate.GetValue ("Save_newShipToLoadPath");
+				} else {
+					Warning ("Flight state is not correctly saved.");
+					goto Reset;
+				}
+				Log("Load");
+				return;
 			}
+			Reset:
+			Reset ();
 		}
 
 		// Remettre à zéro les paramètres
 		public static void Reset() {
 			Save_Vessel_Guid = Guid.Empty;
 			Save_Time = 0;
-			Debug ("Reset");
-			if (System.IO.File.Exists (Path_settings + HighLogic.SaveFolder + "-flight.txt") || System.IO.File.Exists (Path_settings + HighLogic.SaveFolder + "-Save_ShipConfig.txt")) {
-				if (System.IO.File.Exists (Path_settings + HighLogic.SaveFolder + "-flight.txt")) {
-					System.IO.File.Delete (Path_settings + HighLogic.SaveFolder + "-flight.txt");
+			Save_FlightStateCache = null;
+			Save_PostInitState = null;
+			Save_PreLaunchState = null;
+			Save_ShipConfig = null;
+			Save_newShipFlagURL = string.Empty;
+			Save_newShipToLoadPath = string.Empty;
+			if (isHardSaved && HighLogic.LoadedSceneIsGame) {
+				if (File.Exists (Path_flightsave)) {
+					File.Delete (Path_flightsave);
 				}
-				if (System.IO.File.Exists (Path_settings + HighLogic.SaveFolder + "-Save_ShipConfig.txt")) {
-					System.IO.File.Delete (Path_settings + HighLogic.SaveFolder + "-Save_ShipConfig.txt");
+				if (File.Exists (Path_flightstate)) {
+					File.Delete (Path_flightstate);
 				}
-				Debug ("Deleted flight.txt & Save_ShipConfig.txt");
 			}
+			Log ("Reset");
 		}
 	}
 }

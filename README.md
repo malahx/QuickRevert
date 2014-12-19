@@ -1,5 +1,5 @@
 ﻿#### QuickRevert
-#### A plugin for Kerbal Space Program 0.25.0
+#### A plugin for Kerbal Space Program 0.90.0
 #### Copyright 2014 Malah
 
 This program is free software: you can redistribute it and/or modify
@@ -31,6 +31,7 @@ You will keep the revert function if:
 - you make a quickload,
 - KSP crash,
 - you stop your game,
+- the launched vessel is loaded,
 - you are on EVA.
 
 #### How to install it ?
@@ -42,6 +43,13 @@ Unzip all files. Put the QuickRevert folder in your KSP/GameData folder.
 Delete the QuickRevert folder in your KSP/GameData folder.
 
 #### Changelog
+
+v1.11 - 2014.12.19
+- Fix: Corrected the revert to editor on the launchpad,
+- Fix: Deletes old flight state to avoid errors,
+- Fix: Flight state will be saved on the QuickRevert folder,
+- Fix: Some minor bug.
+- Updated to 0.90
 
 v1.10 - 2014.10.08
 - New: Added a delay to keep the revert function while you are outside the vessel.
@@ -58,7 +66,7 @@ No new features planned.
 
 #### Thanks !
 
-to all mods developers which render this game really huge,
+to all mods developers which make this game really huge,
 to my friend Neimad who corrects my bad english ...
 to Squad for this awesome game.
 
