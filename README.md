@@ -46,7 +46,7 @@ Delete the QuickRevert folder in your KSP/GameData folder.
 
 v1.11 - 2014.12.19
 - Fix: Corrected the revert to editor on the launchpad,
-- Fix: Deletes old flight state to avoid errors,
+- Fix: Old flight state will be remove to avoid errors,
 - Fix: Flight state will be saved on the QuickRevert folder,
 - Fix: Some minor bug.
 - Updated to 0.90
