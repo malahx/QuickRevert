@@ -16,26 +16,26 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 
 
-#### What is it ?
+#### What is it?
 
-QuickRevert is a small plugin which add the possibility to keep/pay the revert function.
+QuickRevert is a small plugin which adds the possibility to keep/pay the revert function.
 
-#### How does it work ?
+#### How does it work?
 
 You will lose the revert function if:
-- you launch a new vessel,
-- you stand too long (15 mins) outside the vessel (space center, tracking station, another vessel ...),
-- you can't pay a revert (only for career).
+* you launch a new vessel,
+* you stand too long (15 mins) outside the vessel (space center, tracking station, another vessel ...),
+* you can't pay a revert (only for career).
 
 You will keep the revert function if:
-- you go to the space center or on another vessel,
-- you make a quickload,
-- KSP crash,
-- you stop your game,
-- the launched vessel is loaded,
-- you are on EVA.
+* you go to the space center or on another vessel,
+* you make a quickload,
+* KSP crash,
+* you stop your game,
+* the launched vessel is loaded,
+* you are on EVA.
 
-#### How to install it ?
+#### How to install it?
 
 Unzip all files. Put the QuickRevert folder in your KSP/GameData folder.
 
@@ -43,11 +43,14 @@ Unzip all files. Put the QuickRevert folder in your KSP/GameData folder.
 
 Unzip all files. Merge the new QuickRevert folder with the old folder which is in your KSP/GameData folder.
 
-#### How to uninstall it ?
+#### How to uninstall it?
 
 Delete the QuickRevert folder in your KSP/GameData folder.
 
 #### Changelog
+
+v2.01 - 2015.05.X
+* Fix: Corrected the Stock Toolbar which can show two buttons,
 
 v2.00 - 2015.05.04
 * New: Added the revert cost,
@@ -78,7 +81,7 @@ v1.10 - 2014.10.08
 v1.00 - 2014.10.01
 * Initial release
 
-#### Thanks !
+#### Thanks!
 
 * to Matthieu James for the Faenza icon theme,
 * to all mods developers which make this game really huge,

@@ -23,26 +23,28 @@ namespace QuickRevert {
 	public class QFlight : MonoBehaviour {
 		private static double last_scrMSG = 0;
 
-		[KSPField(isPersistant = true)]
-		internal static QData data;
+		[KSPField(isPersistant = true)]	internal static QFlightData data;
 
 		internal static bool isKeptDataSaved {
 			get {
-				bool _return = false;
-				ProtoVessel _pVessel = data.pVessel;
-				if (_pVessel != null) {
-					Vessel _vessel = _pVessel.vesselRef;
-					if (_vessel != null) {
-						_return |= _vessel.loaded;
+				Vessel _vessel = data.vessel;
+				if (_vessel != null) {
+					if (_vessel.loaded) {
+						return true;
+					}
+					if (isPrelaunch (_vessel)) {
+						return true;
 					}
 				}
 				if (FlightGlobals.ActiveVessel != null) {
-					if (FlightGlobals.ActiveVessel.protoVessel != null) {
-						_return |= FlightGlobals.ActiveVessel.protoVessel.vesselID == data.VesselGuid;
+					if (FlightGlobals.ActiveVessel.id == data.VesselGuid) {
+						return true;
 					}
-					_return |= FlightGlobals.ActiveVessel.isEVA;
+					if (FlightGlobals.ActiveVessel.isEVA) {
+						return true;
+					}
 				}
-				return _return;
+				return false;
 			}
 		}
 
@@ -51,10 +53,10 @@ namespace QuickRevert {
 				if (!QSettings.Instance.EnableRevertLoss) {
 					return false;
 				}
-				if (HighLogic.LoadedScene != GameScenes.FLIGHT && HighLogic.LoadedScene != GameScenes.SPACECENTER && HighLogic.LoadedScene != GameScenes.TRACKSTATION) {
+				if (!HighLogic.LoadedSceneHasPlanetarium) {
 					return false;
 				}
-				if (!data.isSaved) {
+				if (!data.PostInitStateIsSaved) {
 					return false;
 				}
 				if (!data.VesselExists) {
@@ -65,16 +67,25 @@ namespace QuickRevert {
 		}
 
 		internal static bool isPrelaunch(Vessel vessel) {
-			if (vessel != null)
-				return (vessel.situation == Vessel.Situations.PRELAUNCH);
-			return false;
+			if (vessel == null) {
+				return false;
+			}
+			return (vessel.situation == Vessel.Situations.PRELAUNCH);
+		}
+
+		internal static bool isPrelaunch(ProtoVessel pVessel) {
+			if (pVessel == null) {
+				return false;
+			}
+			return (pVessel.situation == Vessel.Situations.PRELAUNCH);
 		}
 
 		internal static void Awake() {
-			if (data == null) {
-				data = new QData ();
-				Quick.Log ("Init Flight Data");
+			if (data != null) {
+				return;
 			}
+			data = new QFlightData ();
+			QuickRevert.Log ("Init Flight Data");
 		}
 
 		internal static void Start() {
@@ -82,46 +93,50 @@ namespace QuickRevert {
 				data.Reset ();
 			}
 			if (HighLogic.LoadedSceneIsGame) {
-				if (QData.isHardSaved) {
-					if (!data.isSaved) {
+				if (QFlightData.isHardSaved) {
+					if (!data.PostInitStateIsSaved) {
 						data.Load ();
 					}
 				}
 			}
 		}
 
-		internal static void OnFlightReady() {
-			if (data.isSaved && data.isActiveVessel) {
+		internal static void StoreOrRestore() {
+			if (data.PostInitStateIsSaved && data.isActiveVessel) {
 				Restore ();
 			} else if (isPrelaunch (FlightGlobals.ActiveVessel)) {
 				Store ();
+			} else {
+				FlightDriver.CanRevertToPostInit = false;
+				FlightDriver.CanRevertToPrelaunch = false;
 			}
 		}
 
 		private static void Store() {
-			if (QData.CanBeStore) {
+			if (QFlightData.CanStorePostInitState) {
 				data.Reset ();
 				data.Store ();
 				data.Save ();
-				Quick.Log ("Revert stored");
+				QuickRevert.Log ("Revert stored");
 			} else {
-				Quick.Log ("Revert can't be store.");
+				QuickRevert.Log ("Revert can't be store.");
 			}
 		}
 
 		private static void Restore() {
-			if (data.isSaved && data.VesselExists && isKeptDataSaved) {
+			if (data.PostInitStateIsSaved && data.VesselExists && isKeptDataSaved) {
 				data.Restore ();
-				Quick.Log ("Revert restored");
+				QuickRevert.Log ("Revert restored");
 			} else {
-				Quick.Log ("Nothing to Restore.");
+				QuickRevert.Log ("Nothing to Restore.");
 			}
 		}
 
 		internal static void LostRevert() {
+			QuickRevert.Warning ("LostRevert", true);
 			if (data.VesselExists) {
-				Quick.Log (string.Format("You have lost the possibility to revert: {0}", data.pVessel.vesselName));
-				ScreenMessages.PostScreenMessage (string.Format("[{0}] You have lost the possibility to revert the last launch ({1}).", Quick.MOD, data.pVessel.vesselName), 10, ScreenMessageStyle.UPPER_RIGHT);
+				QuickRevert.Log (string.Format("You have lost the possibility to revert: {0}", data.pVessel.vesselName));
+				ScreenMessages.PostScreenMessage (string.Format("[{0}] You have lost the possibility to revert the last launch ({1}).", QuickRevert.MOD, data.pVessel.vesselName), 10, ScreenMessageStyle.UPPER_RIGHT);
 			}
 			data.Reset ();
 		}
@@ -138,27 +153,24 @@ namespace QuickRevert {
 					data.SaveTime ();
 					return true;
 				}
-				if (HighLogic.LoadedSceneIsFlight) {
-					if (FlightGlobals.ready) {
-						if (isKeptDataSaved) {
-							if ((Planetarium.GetUniversalTime () - data.time) > 60) {
-								data.SaveTime ();
-							}
-							return true;
-						} else {
-							if ((Planetarium.GetUniversalTime () - data.time) > QSettings.Instance.TimeToKeep) {
-								LostRevert ();
-								return false;
-							}
+				if (HighLogic.LoadedSceneIsFlight && FlightGlobals.ready) {
+					if (isKeptDataSaved) {
+						if ((Planetarium.GetUniversalTime () - data.time) > 60) {
+							data.SaveTime ();
 						}
+						return true;
 					}
-				} else if ((Planetarium.GetUniversalTime () - data.time) > QSettings.Instance.TimeToKeep) {
+				}
+				if ((Planetarium.GetUniversalTime () - data.time) > QSettings.Instance.TimeToKeep) {
+					QuickRevert.Warning ("data.time: " + data.time);
+					QuickRevert.Warning ("Planetarium.GetUniversalTime (): " + Planetarium.GetUniversalTime ());
+					QuickRevert.Warning ("(Planetarium.GetUniversalTime () - data.time): " + (Planetarium.GetUniversalTime () - data.time).ToString());
 					LostRevert ();
 					return false;
 				}
 				double _time = (QSettings.Instance.TimeToKeep + data.time - Planetarium.GetUniversalTime ());
 				if (_time > 30 && (Planetarium.GetUniversalTime () - last_scrMSG) > 59) {
-					ScreenMessages.PostScreenMessage (string.Format ("[{0}] You will lose the possibility to revert the last launch in {1}.", Quick.MOD, Quick.TimeUnits (_time)), 10, ScreenMessageStyle.UPPER_RIGHT);
+					ScreenMessages.PostScreenMessage (string.Format ("[{0}] You will lose the possibility to revert the last launch in {1}.", QuickRevert.MOD, QuickRevert.TimeUnits (_time)), 10, ScreenMessageStyle.UPPER_RIGHT);
 					last_scrMSG = Planetarium.GetUniversalTime ();
 				}
 				return true;

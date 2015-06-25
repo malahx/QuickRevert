@@ -25,54 +25,40 @@ namespace QuickRevert {
 
 		public readonly static QSettings Instance = new QSettings();
 
-		internal static string FileConfig = KSPUtil.ApplicationRootPath + "GameData/" + Quick.MOD + "/Config.txt";
+		internal static string FileConfig = KSPUtil.ApplicationRootPath + "GameData/" + QuickRevert.MOD + "/Config.txt";
 
 		#if GUI
-		[Persistent]
-		public bool StockToolBar = true;
-		[Persistent]
-		public bool BlizzyToolBar = true;
+		[Persistent] public bool StockToolBar = true;
+		[Persistent] public bool BlizzyToolBar = true;
 		#endif
 
-		[Persistent]
-		public bool EnableRevertLoss = true;
+		[Persistent] public bool EnableRevertLoss = true;
 
 		#if KEEP
-		[Persistent]
-		public int TimeToKeep = 900;
+		[Persistent] public int TimeToKeep = 900;
 		#endif
 
 		#if COST
-		[Persistent]
-		public bool RevertCost = true;
-		[Persistent]
-		public bool Credits = true;
-		[Persistent]
-		public bool Sciences = false;
-		[Persistent]
-		public bool Reputations = false;
-		[Persistent]
-		public int CreditsCost = 1000;
-		[Persistent]
-		public int ReputationsCost = 10;
-		[Persistent]
-		public int SciencesCost = 5;
-		[Persistent]
-		public float RevertToLaunchFactor = 0.75f;
-		[Persistent]
-		public bool CostFctReputations = true;
-		[Persistent]
-		public bool CostFctVessel = true;
-		[Persistent]
-		public bool CostFctPenalties = true;
-		[Persistent]
-		public float VesselBasePrice = 50000;
+		[Persistent] public bool RevertCost = true;
+		[Persistent] public bool Credits = true;
+		[Persistent] public bool Sciences = false;
+		[Persistent] public bool Reputations = false;
+		[Persistent] public int CreditsCost = 1000;
+		[Persistent] public int ReputationsCost = 5;
+		[Persistent] public int SciencesCost = 1;
+		[Persistent] public float RevertToLaunchFactor = 0.75f;
+		[Persistent] public bool CostFctReputations = true;
+		[Persistent] public bool CostFctVessel = true;
+		[Persistent] public bool CostFctPenalties = true;
+		[Persistent] public float VesselBasePrice = 50000;
+		[Persistent] public float MinPriceFactor = 0.50f;
+		[Persistent] public float MaxPriceFactor = 2.00f;
 		#endif
 
 		public void Save() {
 			ConfigNode _temp = ConfigNode.CreateConfigFromObject(this, new ConfigNode());
 			_temp.Save(FileConfig);
-			Quick.Log ("Settings Saved");
+			QuickRevert.Log ("Settings Saved");
 		}
 
 		public void Load() {
@@ -80,7 +66,7 @@ namespace QuickRevert {
 				try {
 					ConfigNode _temp = ConfigNode.Load (FileConfig);
 					ConfigNode.LoadObjectFromConfig (this, _temp);
-					Quick.Log ("Settings Loaded");
+					QuickRevert.Log ("Settings Loaded");
 				} catch {
 					Save ();
 				}

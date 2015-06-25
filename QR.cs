@@ -23,35 +23,49 @@ using UnityEngine;
 namespace QuickRevert {
 
 	[KSPAddon(KSPAddon.Startup.EveryScene, false)]
-	public class QuickRevert : Quick {
+	public partial class QuickRevert : MonoBehaviour {
 
 		internal static QuickRevert Instance;
 		#if GUI
 		[KSPField(isPersistant = true)] internal static QBlizzyToolbar BlizzyToolbar;
-		[KSPField(isPersistant = true)] internal static QStockToolbar StockToolbar;
 		#endif
 
 		private void Awake() {
+			if (Instance != null) {
+				Warning ("There's already an Instance of QuickRevert");
+				Destroy (this);
+				return;
+			}
 			Instance = this;
-			QSettings.Instance.Load ();
 			#if GUI
 			if (BlizzyToolbar == null) BlizzyToolbar = new QBlizzyToolbar ();
-			if (StockToolbar == null) StockToolbar = new QStockToolbar ();
-			if (HighLogic.LoadedScene == GameScenes.SPACECENTER) {
-				GameEvents.onGUIApplicationLauncherDestroyed.Add (StockToolbar.AppLauncherDestroyed);
-				GameEvents.onGameSceneLoadRequested.Add (StockToolbar.AppLauncherDestroyed);
-				GameEvents.onGUIApplicationLauncherUnreadifying.Add (StockToolbar.AppLauncherDestroyed);
-				QGUI.Awake ();
-			}
 			#endif
 			if (HighLogic.LoadedSceneIsGame) {
 				if (!HighLogic.CurrentGame.Parameters.Flight.CanRestart) {
-					AutoDestroy ();
+					Warning ("Revert is disabled on this game.");
+					#if GUI
+					if (QStockToolbar.Instance != null && ApplicationLauncher.Ready) {
+						if (QStockToolbar.Instance.appLauncherButton != null) {
+							QStockToolbar.Instance.Destroy ();
+						}
+						Destroy (QStockToolbar.Instance);
+					}
+					#endif
+					Destroy (this);
+					return;
+				} else {
+					#if GUI
+					if (QStockToolbar.Instance == null) {
+						QStockToolbar.Instantiate(new QStockToolbar());
+					}
+					#endif
 				}
 				GameEvents.onFlightReady.Add (OnFlightReady);
 				#if KEEP
 				GameEvents.onTimeWarpRateChanged.Add (OnTimeWarpRateChanged);
 				GameEvents.onGameStateLoad.Add (OnGameStateLoad);
+				GameEvents.onVesselRecovered.Add (OnVesselRecovered);
+				GameEvents.onVesselChange.Add (OnVesselChange);
 				#endif
 				#if COST
 				if (HighLogic.LoadedSceneIsFlight && QCareer.useRevertCost) {
@@ -62,15 +76,12 @@ namespace QuickRevert {
 			#if KEEP
 			QFlight.Awake ();
 			#endif
-		}
-
-		private void AutoDestroy() {
-			Quick.Warning ("Revert is disabled on this game.");
-			Destroy (this);
+			Warning ("Awake", true);
 		}
 
 		private void Start() {
 			if (HighLogic.LoadedSceneIsGame) {
+				QSettings.Instance.Load ();
 				#if KEEP
 				if (QFlight.CanTimeLostDataSaved) {
 					StartEach ();
@@ -79,31 +90,32 @@ namespace QuickRevert {
 				#if GUI
 				if (HighLogic.LoadedScene == GameScenes.SPACECENTER) {
 					BlizzyToolbar.Start ();
-					StartCoroutine (StockToolbar.AppLauncherReady ());
+					QGUI.Start ();
 				}
 				#endif
 			}
 			#if KEEP
 			QFlight.Start ();
 			#endif
+			Warning ("Start", true);
 		}
 
 		private void OnDestroy() {
 			#if GUI
 			BlizzyToolbar.OnDestroy ();
-			GameEvents.onGUIApplicationLauncherDestroyed.Remove (StockToolbar.AppLauncherDestroyed);
-			GameEvents.onGameSceneLoadRequested.Remove (StockToolbar.AppLauncherDestroyed);
-			GameEvents.onGUIApplicationLauncherUnreadifying.Remove (StockToolbar.AppLauncherDestroyed);
 			#endif
 			GameEvents.onFlightReady.Remove (OnFlightReady);
 			#if KEEP
 			GameEvents.onTimeWarpRateChanged.Remove (OnTimeWarpRateChanged);
 			GameEvents.onGameStateLoad.Remove (OnGameStateLoad);
+			GameEvents.onVesselRecovered.Remove (OnVesselRecovered);
+			GameEvents.onVesselChange.Remove (OnVesselChange);
 			StopEach ();
 			#endif
 			#if COST
 			GameEvents.onGamePause.Remove (OnGamePause);
 			#endif
+			Warning ("OnDestroy", true);
 		}
 
 		private void OnFlightReady() {
@@ -113,11 +125,9 @@ namespace QuickRevert {
 			}
 			#endif
 			#if KEEP
-			QFlight.OnFlightReady ();
-			if (QFlight.CanTimeLostDataSaved) {
-				StartEach ();
-			}
+			QFlight.StoreOrRestore ();
 			#endif
+			Warning ("OnFlightReady", true);
 		}
 
 		#if COST
@@ -125,7 +135,32 @@ namespace QuickRevert {
 			if (!HighLogic.LoadedSceneIsFlight || !QCareer.useRevertCost) {
 				return;
 			}
-			StartCoroutine (OnRevertPopup ());
+			StartCoroutine (QCareer.OnRevertPopup ());
+			Warning ("OnGamePause", true);
+		}
+		#endif
+
+		#if KEEP
+		private void OnVesselRecovered(ProtoVessel pVessel) {
+			if (QFlight.data == null) {
+				return;
+			}
+			if (QFlight.data.pVessel != pVessel) {
+				return;
+			}
+			QFlight.data.Reset ();
+			#if GUI
+			QGUI.RectSettings.height = 0;
+			#endif		
+			Warning ("OnVesselRecovered", true);
+		}
+
+		private void OnVesselChange(Vessel vessel) {
+			if (!FlightGlobals.ready) {
+				return;
+			}
+			QFlight.StoreOrRestore ();
+			Warning ("OnVesselChange", true);
 		}
 		#endif
 
@@ -137,7 +172,12 @@ namespace QuickRevert {
 
 		#if KEEP
 		private void OnTimeWarpRateChanged() {
+			if (!QFlight.CanTimeLostDataSaved) {
+				StopEach ();
+				return;
+			}
 			RestartEach ();
+			Warning ("OnTimeWarpRateChanged", true);
 		}
 
 		private void OnGameStateLoad(ConfigNode node) {
@@ -150,10 +190,13 @@ namespace QuickRevert {
 			double _UTNode = double.Parse (node.GetNode ("FLIGHTSTATE").GetValue ("UT"));
 			if (!HighLogic.LoadedSceneIsFlight) {
 				if (EditorDriver.StartupBehaviour == EditorDriver.StartupBehaviours.LOAD_FROM_CACHE) {
-					if (QFlight.data.isSaved) {
+					if (QFlight.data.PostInitStateIsSaved) {
 						if (!QFlight.data.VesselExists && _UTNode == QFlight.data.PreLaunchState.UniversalTime) {
-							Quick.Warning ("Revert to EDITOR.");
+							Warning ("Revert to EDITOR.");
 							QFlight.data.Reset ();
+							#if COST
+							QFlight.data.Reset ();
+							#endif
 							return;
 						}
 					}
@@ -161,16 +204,18 @@ namespace QuickRevert {
 			}
 			if (HighLogic.LoadedSceneIsFlight) {
 				if (FlightDriver.StartupBehaviour == FlightDriver.StartupBehaviours.RESUME_SAVED_CACHE) {
-					if (QFlight.data.isSaved) {
+					if (QFlight.data.PostInitStateIsSaved) {
 						int _ActiveVesselIdx;
 						if (int.TryParse (node.GetNode ("FLIGHTSTATE").GetValue ("activeVessel"), out _ActiveVesselIdx)) {
 							if (_ActiveVesselIdx == QFlight.data.activeVesselIdx) {
 								if (QFlight.data.isPrelaunch && Math.Round (_UTNode, 11) == Math.Round (QFlight.data.PostInitState.UniversalTime, 11) && Math.Round (Planetarium.GetUniversalTime (), 11) == Math.Round (QFlight.data.PostInitState.UniversalTime, 11)) {
-									Quick.Warning ("Revert to LAUNCH.");
+									Warning ("Revert to LAUNCH.");
+									#if COST
 									QFlight.data.Reset ();
+									#endif
 									return;
 								} else if (_UTNode > QFlight.data.PostInitState.UniversalTime) {
-									Quick.Warning ("Quickload.");
+									Warning ("Quickload.");
 									return;
 								} 
 							}
@@ -179,13 +224,14 @@ namespace QuickRevert {
 				}	
 			}
 			if (!HighLogic.LoadedSceneIsEditor) {
-				if (QFlight.data.isSaved && !QFlight.data.VesselExists) {
+				if (QFlight.data.PostInitStateIsSaved && !QFlight.data.VesselExists) {
 					if (_UTNode < QFlight.data.PostInitState.UniversalTime) {
-						Quick.Warning ("Quickload an older quicksave");
+						Warning ("Quickload an older quicksave");
 						QFlight.data.Reset ();
 					}
 				}
 			}
+			Warning ("OnGameStateLoad", true);
 		}
 		#endif
 		//An other (simpler) way to find a revert without QFlight.data but it needs to load the savegame
@@ -198,14 +244,14 @@ namespace QuickRevert {
 					Game _game = GamePersistence.LoadGame ("persistent", HighLogic.SaveFolder, true, true);
 					// Don't know why but without round it's can't be equal
 					if (Math.Round (FlightDriver.PostInitState.UniversalTime, 11) == Math.Round (_game.UniversalTime, 11)) {
-						Quick.Warning ("Revert to Launch (OnGameSceneLoadRequested)");
+						Warning ("Revert to Launch (OnGameSceneLoadRequested)");
 					}
 				}
 			} else {
 				if (FlightDriver.PreLaunchState != null && EditorDriver.StartupBehaviour == EditorDriver.StartupBehaviours.LOAD_FROM_CACHE) {
 					Game _game = GamePersistence.LoadGame (SaveGame, HighLogic.SaveFolder, true, true);
 					if (FlightDriver.PreLaunchState.UniversalTime == _game.UniversalTime) {
-						Quick.Warning ("Revert to Editor (OnGameSceneLoadRequested)");
+						Warning ("Revert to Editor (OnGameSceneLoadRequested)");
 					}
 				}
 			}

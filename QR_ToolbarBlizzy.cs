@@ -27,7 +27,7 @@ namespace QuickRevert {
 				return QSettings.Instance.BlizzyToolBar;
 			}
 		}
-		private string TexturePath = Quick.MOD + "/Textures/BlizzyToolBar";
+		private string TexturePath = QuickRevert.MOD + "/Textures/BlizzyToolBar";
 		public static GameScenes[] AppScenes = {
 			GameScenes.SPACECENTER
 		};
@@ -47,9 +47,9 @@ namespace QuickRevert {
 			if (!HighLogic.LoadedSceneIsGame || !isAvailable || !Enabled || Button != null) {
 				return;
 			}
-			Button = ToolbarManager.Instance.add (Quick.MOD, Quick.MOD);
+			Button = ToolbarManager.Instance.add (QuickRevert.MOD, QuickRevert.MOD);
 			Button.TexturePath = TexturePath;
-			Button.ToolTip = Quick.MOD + ": Settings";
+			Button.ToolTip = QuickRevert.MOD + ": Settings";
 			Button.OnClick += (e) => OnClick ();
 			Button.Visibility = new GameScenesVisibility(AppScenes);
 		}

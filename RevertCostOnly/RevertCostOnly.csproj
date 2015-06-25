@@ -7,7 +7,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>RevertCostOnly</RootNamespace>
     <AssemblyName>QuickRevert</AssemblyName>
-    <ReleaseVersion>2.00</ReleaseVersion>
+    <ReleaseVersion>2.10</ReleaseVersion>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -15,7 +15,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG;</DefineConstants>
+    <DefineConstants>DEBUG;COST;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
@@ -37,10 +37,10 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\lib\1.02\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\lib\1.0.4\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\lib\1.02\UnityEngine.dll</HintPath>
+      <HintPath>..\..\lib\1.0.4\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

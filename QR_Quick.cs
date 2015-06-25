@@ -23,20 +23,27 @@ using UnityEngine;
 
 namespace QuickRevert {
 
-	public class Quick : MonoBehaviour {
+	public partial class QuickRevert : MonoBehaviour {
 
 		public readonly static string VERSION = Assembly.GetAssembly(typeof(QuickRevert)).GetName().Version.Major + "." + Assembly.GetAssembly(typeof(QuickRevert)).GetName().Version.Minor + Assembly.GetAssembly(typeof(QuickRevert)).GetName().Version.Build;
 		public readonly static string MOD = Assembly.GetAssembly(typeof(QuickRevert)).GetName().Name;
-		private static bool isdebug = true;
 
-		internal static void Log(string _string) {
-			if (isdebug) {
+		internal static void Log(string _string, bool debug = false) {
+			if (!debug) {
 				Debug.Log (MOD + "(" + VERSION + "): " + _string);
+			} else {
+				#if DEBUG
+				Debug.Log (MOD + "(" + VERSION + "): " + _string);
+				#endif
 			}
 		}
-		internal static void Warning(string _string) {
-			if (isdebug) {
+		internal static void Warning(string _string, bool debug = false) {
+			if (!debug) {
 				Debug.LogWarning (MOD + "(" + VERSION + "): " + _string);
+			} else {
+				#if DEBUG
+				Debug.LogWarning (MOD + "(" + VERSION + "): " + _string);
+				#endif
 			}
 		}
 
@@ -45,7 +52,7 @@ namespace QuickRevert {
 			if (time >= 60) {
 				return Math.Round (time / 60) + " min(s)";
 			} else {
-				return time + " sec(s)";
+				return Math.Round (time) + " sec(s)";
 			}
 		}
 
@@ -74,31 +81,15 @@ namespace QuickRevert {
 		internal IEnumerator UpdateEach () {
 			yield return new WaitForSeconds (1);
 			Coroutine _coroutine = CoroutineEach;
-			//Quick.Log ("StartUpdateEach " + _coroutine.GetHashCode());
+			QuickRevert.Log ("StartUpdateEach " + _coroutine.GetHashCode(), true);
 			while (_coroutine == CoroutineEach) {
-				//Quick.Log ("UpdateEach " + _coroutine.GetHashCode());
 				if (!QFlight.KeepData) {
+					QuickRevert.Warning ("Stop KeepData", true);
 					break;
 				}
 				yield return new WaitForSeconds ((TimeWarp.CurrentRateIndex == 0 ? 60 : 1));
 			}
-			//Quick.Log ("EndUpdateEach " + _coroutine.GetHashCode());
-		}
-		#endif
-
-		#if COST
-		internal IEnumerator OnRevertPopup () {
-			while (FlightDriver.Pause) {
-				PopupDialog _popup = (PopupDialog)PopupDialog.FindObjectOfType (typeof(PopupDialog));
-				if (_popup != null) {
-					if (_popup.dialogToDisplay != null) {
-						if (_popup.enabled && _popup.dialogToDisplay.title == "Reverting Flight") {
-							QCareer.OnRevertPopup (_popup);
-						}
-					}
-				}
-				yield return new WaitForEndOfFrame ();
-			}
+			QuickRevert.Log ("EndUpdateEach " + _coroutine.GetHashCode(), true);
 		}
 		#endif
 	}

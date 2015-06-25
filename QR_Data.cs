@@ -21,9 +21,9 @@ using System.IO;
 using UnityEngine;
 
 namespace QuickRevert {
-	public class QData {
+	public class QFlightData {
 
-		internal static string FileFlightState = KSPUtil.ApplicationRootPath + "GameData/" + Quick.MOD + "/PluginData/{0}-flightstate.txt";
+		internal static string FileFlightState = KSPUtil.ApplicationRootPath + "GameData/" + QuickRevert.MOD + "/PluginData/{0}-flightstate.txt";
 
 		internal static string PathFlightState {
 			get {
@@ -34,42 +34,66 @@ namespace QuickRevert {
 			}
 		}
 
-		internal static bool ConfigNodeHasSaved(ConfigNode nodes) {
-			if (HighLogic.LoadedSceneIsGame) {
-				return nodes.HasNode ("PostInitState") &&
-				nodes.HasNode ("PreLaunchState") &&
+		internal static bool ConfigNodeHasPostInitState(ConfigNode nodes) {
+			return nodes.HasNode ("PostInitState");
+		}
+
+		internal static bool ConfigNodeHasPreLaunchState(ConfigNode nodes) {
+			return nodes.HasNode ("PreLaunchState") &&
 				nodes.HasValue ("newShipFlagURL") &&
 				nodes.HasValue ("newShipToLoadPath") &&
 				nodes.HasNode ("ShipConfig") &&
 				nodes.HasValue ("ShipType");
-			}
-			return false;
 		}
 
 		internal static bool isHardSaved {
 			get {
-				if (HighLogic.LoadedSceneIsGame) {
-					return File.Exists (PathFlightState);
+				if (!HighLogic.LoadedSceneIsGame) {
+					return false;
 				}
-				return false;
+				return File.Exists (PathFlightState);
 			}
 		}
 
-		internal static bool CanBeStore {
+		internal static bool CanStorePostInitState {
 			get {
-				if (HighLogic.LoadedSceneIsFlight) {
-					return FlightDriver.PostInitState != null &&
-						FlightDriver.PreLaunchState != null &&
-						FlightDriver.newShipFlagURL != string.Empty &&
-						FlightDriver.newShipToLoadPath != string.Empty &&
-						ShipConstruction.ShipConfig != null &&
-						ShipConstruction.ShipType != EditorFacility.None;
+				if (!HighLogic.LoadedSceneIsFlight) {
+					return false;
 				}
-				return false;
+				return FlightDriver.PostInitState != null;
 			}
 		}
 
-		public QData() {
+		internal bool CanReStorePostInitState {
+			get {
+				return PostInitState != null;
+			}
+		}
+
+		internal static bool CanStorePreLaunchState {
+			get {
+				if (!HighLogic.LoadedSceneIsFlight) {
+					return false;
+				}
+				return FlightDriver.PreLaunchState != null &&
+					FlightDriver.newShipFlagURL != string.Empty &&
+					FlightDriver.newShipToLoadPath != string.Empty &&
+					ShipConstruction.ShipConfig != null &&
+					ShipConstruction.ShipType != EditorFacility.None;
+			}
+		}
+
+		internal bool CanReStorePreLaunchState {
+			get {
+				return PreLaunchState != null &&
+					newShipFlagURL != string.Empty &&
+					newShipToLoadPath != string.Empty &&
+					ShipConfig != null &&
+					ShipType != EditorFacility.None;
+			}
+		}
+
+		public QFlightData() {
 			Reset ();
 		}
 		public string newShipToLoadPath {
@@ -96,88 +120,105 @@ namespace QuickRevert {
 			get;
 			private set;
 		}
-		public ProtoVessel pVessel {
-			get;
-			private set;
-		}
 		public double time {
 			get;
 			private set;
 		}
+
+		public bool CanFindVessel {
+			get {
+				return HighLogic.LoadedSceneHasPlanetarium && FlightGlobals.Vessels.Count > 0;
+			}
+		}
 		public Guid VesselGuid {
 			get {
-				if (PostInitState != null) {
-					if (pVessel != null) {
-						if (PostInitState.ActiveVesselID == pVessel.vesselID) {
-							return pVessel.vesselID;
-						} else {
-							return Guid.Empty; 
-						}
-					}
-					return PostInitState.ActiveVesselID;
+				if (PostInitState == null) {
+					return Guid.Empty;
 				}
-				return Guid.Empty;
+				return PostInitState.ActiveVesselID;
 			}
 		}
 		public int activeVesselIdx {
 			get {
-				if (PostInitState != null) {
-					return PostInitState.ActiveVessel;
+				if (PostInitState == null) {
+					return -1;
 				}
-				return -1;
-			}
-		}
-		public ProtoVessel FindpVessel {
-			get {
-				Guid _guid = VesselGuid;
-				if (_guid != Guid.Empty) {
-					return HighLogic.CurrentGame.flightState.protoVessels.FindLast (pv => pv.vesselID == _guid);
-				}
-				return null;
+				return PostInitState.ActiveVessel;
 			}
 		}
 		public bool VesselExists {
 			get {
 				Guid _guid = VesselGuid;
-				if (_guid != Guid.Empty) {
-					return HighLogic.CurrentGame.flightState.protoVessels.Exists(pv => pv.vesselID == _guid);
+				if (_guid == Guid.Empty) {
+					return false;
 				}
-				return false;
+				if (CanFindVessel) {
+					return FlightGlobals.Vessels.Exists(v => v.id == _guid);
+				}
+				return HighLogic.CurrentGame.Updated().flightState.protoVessels.Exists(pv => pv.vesselID == _guid);
+			}
+		}
+		public ProtoVessel pVessel {
+			get {
+				Guid _guid = VesselGuid;
+				if (_guid == Guid.Empty) {
+					return null;
+				}
+				if (CanFindVessel) {
+					Vessel _vessel = FlightGlobals.Vessels.FindLast (v => v.id == _guid);
+					if (_vessel != null) {
+						return _vessel.protoVessel;
+					}
+				}
+				return HighLogic.CurrentGame.Updated().flightState.protoVessels.FindLast (pv => pv.vesselID == _guid);
+			}
+		}
+		public Vessel vessel {
+			get {
+				Guid _guid = VesselGuid;
+				if (_guid == Guid.Empty || !CanFindVessel) {
+					return null;
+				}
+				Vessel _vessel = FlightGlobals.Vessels.FindLast (v => v.id == _guid);
+				return _vessel;
 			}
 		}
 		public bool isPrelaunch {
 			get {
-				if (pVessel != null) {
-					Vessel _vessel = pVessel.vesselRef;
+				if (CanFindVessel) {
+					Vessel _vessel = vessel;
 					if (_vessel != null) {
 						return _vessel.situation == Vessel.Situations.PRELAUNCH;
 					}
-					return pVessel.situation == Vessel.Situations.PRELAUNCH;
 				}
-				return false;
+				ProtoVessel _pVessel = pVessel;
+				if (_pVessel == null) {
+					return false;
+				}
+				return _pVessel.situation == Vessel.Situations.PRELAUNCH;
 			}
 		}
 		public bool isActiveVessel {
 			get {
 				Guid _guid = VesselGuid;
-				if (_guid != Guid.Empty && FlightGlobals.ActiveVessel != null) {
-					return _guid == FlightGlobals.ActiveVessel.id;
+				if (_guid == Guid.Empty || FlightGlobals.ActiveVessel == null) {
+					return false;
 				}
-				return false;
+				return _guid == FlightGlobals.ActiveVessel.id;
 			}
 		}
-		public bool isSaved {
+		public bool PostInitStateIsSaved {
 			get {
-				if (HighLogic.LoadedSceneIsGame) {
-					return PostInitState != null &&
-					PreLaunchState != null &&
+				return PostInitState != null;
+			}
+		}
+		public bool PreLaunchStateIsSaved {
+			get {
+				return PreLaunchState != null &&
 					newShipToLoadPath != string.Empty &&
 					newShipFlagURL != string.Empty &&
 					ShipConfig != null &&
-					ShipType != EditorFacility.None &&
-					time != 0;
-				}
-				return false;
+					ShipType != EditorFacility.None;
 			}
 		}
 		public void Store() {
@@ -194,41 +235,42 @@ namespace QuickRevert {
 			newShipFlagURL = FlightDriver.newShipFlagURL;
 			ShipConfig = ShipConstruction.ShipConfig;
 			ShipType = ShipConstruction.ShipType;
-			pVessel = FindpVessel;
 			time = Planetarium.GetUniversalTime ();
-			Quick.Log ("Store data");
+			QuickRevert.Log ("Store data");
 		}
 		public void Restore() {
 			FlightDriver.PostInitState = PostInitState;
-			FlightDriver.PreLaunchState = PreLaunchState;
 			#if COST
 			FlightDriver.CanRevertToPostInit = QCareer.CanRevertToPostInit;
-			FlightDriver.CanRevertToPrelaunch = QCareer.CanRevertToPrelaunch;
 			#else
 			FlightDriver.CanRevertToPostInit = true;
-			FlightDriver.CanRevertToPrelaunch = true;
+			#endif
+			FlightDriver.PreLaunchState = PreLaunchState;
+			#if COST
+			FlightDriver.CanRevertToPrelaunch = QCareer.CanRevertToPrelaunch;
+			#else
+				FlightDriver.CanRevertToPrelaunch = true;
 			#endif
 			FlightDriver.newShipToLoadPath = newShipToLoadPath;
 			FlightDriver.newShipFlagURL = newShipFlagURL;
 			ShipConstruction.ShipConfig = ShipConfig;
 			ShipConstruction.ShipType = ShipType;
-			pVessel = FindpVessel;
 			time = Planetarium.GetUniversalTime ();
-			Quick.Log ("Restore data");
+			QuickRevert.Log ("Restore data");
 		}
 		public void Refresh() {
 			bool _return = false;
 			if (FlightDriver.PostInitState != null && PostInitState != null) {
 				if (FlightDriver.PostInitState.UniversalTime == PostInitState.UniversalTime) {
 					PostInitState = FlightDriver.PostInitState;
-					Quick.Warning ("PostInitState refreshed");
+					QuickRevert.Warning ("PostInitState refreshed");
 					_return = true;
 				}
 			}
 			if (FlightDriver.PreLaunchState != null && PreLaunchState != null) {
 				if (FlightDriver.PreLaunchState.UniversalTime == PreLaunchState.UniversalTime) {
 					PreLaunchState = FlightDriver.PreLaunchState;
-					Quick.Warning ("PreLaunchState refreshed");
+					QuickRevert.Warning ("PreLaunchState refreshed");
 					_return = true;
 				}
 			}
@@ -247,79 +289,81 @@ namespace QuickRevert {
 			newShipFlagURL = string.Empty;
 			ShipConfig = null;
 			ShipType = EditorFacility.None;
-			pVessel = null;
 			time = 0;
-			if (HighLogic.LoadedSceneIsGame) {
+			if (PathFlightState != string.Empty) {
 				if (File.Exists (PathFlightState)) {
 					File.Delete (PathFlightState);
 				}
 			}
-			Quick.Log ("Reset data");
+			QuickRevert.Log ("Reset data");
 		}
 		public void Save() {
-			if (isSaved) {
+			if (PostInitStateIsSaved) {
 				if (VesselExists) { 
 					ConfigNode _flightstate = new ConfigNode ();
-					_flightstate.AddNode ("PreLaunchState").AddData (PreLaunchState.Config);
 					_flightstate.AddNode ("PostInitState").AddData (PostInitState.Config);
-					_flightstate.AddValue ("newShipFlagURL", newShipFlagURL);
-					_flightstate.AddValue ("newShipToLoadPath", newShipToLoadPath);
-					_flightstate.AddNode ("ShipConfig").AddData (ShipConfig);
-					_flightstate.AddValue ("ShipType", (ShipType == EditorFacility.SPH ? "SPH" : "VAB"));
+					if (PreLaunchStateIsSaved) {
+						_flightstate.AddNode ("PreLaunchState").AddData (PreLaunchState.Config);
+						_flightstate.AddValue ("newShipFlagURL", newShipFlagURL);
+						_flightstate.AddValue ("newShipToLoadPath", newShipToLoadPath);
+						_flightstate.AddNode ("ShipConfig").AddData (ShipConfig);
+						_flightstate.AddValue ("ShipType", (ShipType == EditorFacility.SPH ? "SPH" : "VAB"));
+					}
 					try {
 						_flightstate.Save (PathFlightState);
-						Quick.Log ("Hard save data");
+						QuickRevert.Log ("Hard save data");
 						return;
 					} catch (Exception e) {
-						Quick.Warning (string.Format ("Can't hard save flight state: {0}", e));
+						QuickRevert.Warning (string.Format ("Can't hard save flight state: {0}", e));
 					}
 				}
 			} else {
-				Quick.Warning ("Nothing to save.");
+				QuickRevert.Warning ("Nothing to save.");
 				Reset ();
 			}
 		}
 		public void SaveTime() {
-			if (isSaved) {
+			if (PostInitStateIsSaved) {
 				if (VesselExists) { 
 					time = Planetarium.GetUniversalTime ();
-					//Quick.Log("Save Time");
+					QuickRevert.Log("Save Time", true);
 				}
 			}
 		}
 		public void Load() {
 			if (isHardSaved) {
 				ConfigNode _flightstate = ConfigNode.Load (PathFlightState);
-				if (ConfigNodeHasSaved (_flightstate)) {
+				if (ConfigNodeHasPostInitState (_flightstate)) {
 					Game _game = new Game (_flightstate.GetNode ("PostInitState"));
 					if (!_game.compatible) {
-						Quick.Warning ("Post Init State is not compatible.");
+						QuickRevert.Warning ("Post Init State is not compatible.");
 						Reset ();
 						return;
 					}
 					PostInitState = new GameBackup (_game);
-					_game = new Game (_flightstate.GetNode ("PreLaunchState"));
-					if (!_game.compatible) {
-						Quick.Warning ("Pre Launch State is not compatible.");
-						Reset ();
-						return;
+					if (ConfigNodeHasPreLaunchState (_flightstate)) {
+						_game = new Game (_flightstate.GetNode ("PreLaunchState"));
+						if (!_game.compatible) {
+							QuickRevert.Warning ("Pre Launch State is not compatible.");
+							Reset ();
+							return;
+						}
+						PreLaunchState = new GameBackup (_game);
+						newShipFlagURL = _flightstate.GetValue ("newShipFlagURL");
+						newShipToLoadPath = _flightstate.GetValue ("newShipToLoadPath");
+						ShipConfig = _flightstate.GetNode ("ShipConfig");
+						ShipType = (_flightstate.GetValue ("ShipType") == "SPH" ? EditorFacility.SPH : EditorFacility.VAB);
 					}
-					PreLaunchState = new GameBackup (_game);
-					newShipFlagURL = _flightstate.GetValue ("newShipFlagURL");
-					newShipToLoadPath = _flightstate.GetValue ("newShipToLoadPath");
-					ShipConfig = _flightstate.GetNode ("ShipConfig");
-					ShipType = (_flightstate.GetValue ("ShipType") == "SPH" ? EditorFacility.SPH : EditorFacility.VAB);
-					pVessel = FindpVessel;
-					time = Planetarium.GetUniversalTime ();
-					Quick.Log ("Load Hard Saved Data");
+					time = 0;
+					QuickRevert.Log ("Load Hard Saved Data");
 					return;
 				} else {
-					Quick.Warning ("Flight state is not correctly saved.");
+					QuickRevert.Warning ("Flight state is not correctly saved.");
 					Reset ();
 					return;
 				}
 			} else {
-				Quick.Warning ("Nothing to load.");
+				QuickRevert.Warning ("Nothing to load.");
 				Reset ();
 				return;
 			}

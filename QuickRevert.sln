@@ -27,6 +27,7 @@ Global
 		{CF983F74-7B18-4EA3-8AA1-6F96FE19AA5D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
-		version = 2.00
+		description = @#### QuickRevert\n#### A plugin for Kerbal Space Program\n#### Copyright 2015 Malah
+		version = 2.10
 	EndGlobalSection
 EndGlobal

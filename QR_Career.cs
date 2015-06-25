@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -25,6 +26,8 @@ namespace QuickRevert {
 
 		internal static bool CanRevertToPostInit = true;
 		internal static bool CanRevertToPrelaunch = true;
+
+		[KSPField(isPersistant = true)]	internal static Guid lastLaunch;
 
 		internal enum RevertType {
 			EDITOR,
@@ -56,58 +59,62 @@ namespace QuickRevert {
 		}
 
 		internal static float Cost(RevertType RType, Currency CType, float vesselCost = -1) {
-			if (useRevertCost) {
-				double _cost = 0;
-				double _defaultPrice = 0;
-				double _factor = 1;
-				if (RType == RevertType.LAUNCH) {
-					_factor *= QSettings.Instance.RevertToLaunchFactor;
-				} 
-				switch (CType) {
-				case Currency.Funds:
-					if (!useCredits) {
-						return 0;
-					}
-					_cost -= QSettings.Instance.CreditsCost * _factor;
-					break;
-				case Currency.Reputation:
-					if (!useReputations) {
-						return 0;
-					}
-					_cost -= QSettings.Instance.ReputationsCost * _factor;
-					break;
-				case Currency.Science:
-					if (!useSciences) {
-						return 0;
-					}
-					_cost -= QSettings.Instance.SciencesCost * _factor;
-					break;
-				}
-				_defaultPrice -= _cost;
-				if (QSettings.Instance.CostFctReputations) {
-					_cost *= (1 - Reputation.UnitRep / 2);
-				}
-				if (QSettings.Instance.CostFctVessel) {
-					float _vesselcost = (vesselCost == -1 ? VesselCost : vesselCost);
-					if (_vesselcost > 0) {
-						float _FctVessel = _vesselcost / (QSettings.Instance.VesselBasePrice > 0 ? QSettings.Instance.VesselBasePrice : 50000);
-						_cost *= _FctVessel;
-					}
-				}
-				if (QSettings.Instance.CostFctPenalties) {
-					_cost *= HighLogic.CurrentGame.Parameters.Career.FundsLossMultiplier;
-				}
-				double _defaultCost = -0.1 * _defaultPrice;
-				if (_cost > _defaultCost) {
-					_cost = _defaultCost;
-				}
-				if (_cost > -1) {
-					_cost = -1;
-				}
-				return Convert.ToSingle(Math.Round(_cost));
-			} else {
+			if (!useRevertCost) {
 				return 0;
 			}
+			double _cost = 0;
+			double _defaultPrice = 0;
+			double _defaultCost = 0;
+			double _factor = 1;
+			if (RType == RevertType.LAUNCH) {
+				_factor *= QSettings.Instance.RevertToLaunchFactor;
+			} 
+			switch (CType) {
+			case Currency.Funds:
+				if (!useCredits) {
+					return 0;
+				}
+				_cost -= QSettings.Instance.CreditsCost * _factor;
+				break;
+			case Currency.Reputation:
+				if (!useReputations) {
+					return 0;
+				}
+				_cost -= QSettings.Instance.ReputationsCost * _factor;
+				break;
+			case Currency.Science:
+				if (!useSciences) {
+					return 0;
+				}
+				_cost -= QSettings.Instance.SciencesCost * _factor;
+				break;
+			}
+			_defaultPrice -= _cost;
+			if (QSettings.Instance.CostFctReputations) {
+				_cost *= (1 - Reputation.UnitRep / 2);
+			}
+			if (QSettings.Instance.CostFctVessel) {
+				float _vesselcost = (vesselCost == -1 ? VesselCost : vesselCost);
+				if (_vesselcost > 0) {
+					float _FctVessel = _vesselcost / (QSettings.Instance.VesselBasePrice > 0 ? QSettings.Instance.VesselBasePrice : 50000);
+					_cost *= _FctVessel;
+				}
+			}
+			if (QSettings.Instance.CostFctPenalties) {
+				_cost *= HighLogic.CurrentGame.Parameters.Career.FundsLossMultiplier;
+			}
+			_defaultCost = -QSettings.Instance.MinPriceFactor * _defaultPrice;
+			if (_cost > _defaultCost) {
+				_cost = _defaultCost;
+			}
+			_defaultCost = -QSettings.Instance.MaxPriceFactor * _defaultPrice;
+			if (_cost < _defaultCost) {
+				_cost = _defaultCost;
+			}
+			if (_cost > -1) {
+				_cost = -1;
+			}
+			return Convert.ToSingle (Math.Round (_cost));
 		}
 
 		internal static float VesselCost {
@@ -117,7 +124,16 @@ namespace QuickRevert {
 					EditorLogic.fetch.ship.GetShipCosts (out _dryCost, out _fuelCost);
 					return _dryCost + _fuelCost;
 				} else if (HighLogic.LoadedSceneIsFlight) {
-					if (FlightGlobals.ActiveVessel == null) {
+					if (FlightDriver.PostInitState == null) {
+						return 0;
+					}
+					ConfigNode[] _parts = FlightDriver.PostInitState.Config.GetNode("GAME").GetNode ("FLIGHTSTATE").GetNode ("VESSEL", FlightDriver.PostInitState.ActiveVessel).GetNodes ("PART");
+					foreach (ConfigNode _part in _parts) {
+						AvailablePart _availablePart = PartLoader.getPartInfoByName (_part.GetValue("name"));
+						ShipConstruction.GetPartCosts (_part, _availablePart, out _dryCost, out _fuelCost);
+						_VesselCost += _dryCost + _fuelCost;
+					}
+					/*if (FlightGlobals.ActiveVessel == null) {
 						return 0;
 					}
 					ProtoVessel _pvessel = FlightGlobals.ActiveVessel.protoVessel;
@@ -128,10 +144,10 @@ namespace QuickRevert {
 					foreach (ProtoPartSnapshot _part in _parts) {
 						ShipConstruction.GetPartCosts (_part, _part.partInfo, out _dryCost, out _fuelCost);
 						_VesselCost += _dryCost + _fuelCost;
-					}
+					}*/
 					return _VesselCost;
 				}
-				return 25000;
+				return 0;
 			}
 		}
 
@@ -209,6 +225,11 @@ namespace QuickRevert {
 			int _iFunds, _iReputations, _iSciences;
 			float _funds, _reputations, _sciences;
 			if (GetIndex (_gameBackup.Config, out _iFunds, out _iReputations, out _iSciences, out _funds, out _reputations, out _sciences)) {
+				if (RType == RevertType.EDITOR) {
+					if (lastLaunch == FlightGlobals.ActiveVessel.id) {
+						RType = RevertType.LAUNCH;
+					}
+				}
 				if (useCredits) {
 					creCost = Cost (RType, Currency.Funds);
 					float _deltaCre = _funds + creCost;
@@ -242,45 +263,63 @@ namespace QuickRevert {
 				return;
 			}
 			#if KEEP
-			if (QFlight.data.isSaved) {
+			if (QFlight.data.PostInitStateIsSaved) {
 				return;
 			}
 			#endif
+			QuickRevert.Warning("Vessel cost: " + VesselCost, true);
 			float _cre, _rep, _sci;
-			int CanRevert = -1;
-			CanRevert = Pay (RevertType.LAUNCH, out _cre, out _rep, out _sci);
-			if (CanRevert == 1) {
-				Quick.Warning ("Revert to Launch will cost you :" + msgCost (_cre, _rep, _sci));
-			} else if (CanRevert == 0) {
+			int _CanRevert = -1;
+			_CanRevert = Pay (RevertType.LAUNCH, out _cre, out _rep, out _sci);
+			if (_CanRevert == 1) {
+				QuickRevert.Warning ("Revert to Launch will cost you :" + msgCost (_cre, _rep, _sci));
+			} else if (_CanRevert == 0) {
 				FlightDriver.CanRevertToPostInit = false;
 				CanRevertToPostInit = false;
-				ScreenMessages.PostScreenMessage (string.Format ("[{0}] You have no suffisant money to Revert to Launch.", Quick.MOD), 10, ScreenMessageStyle.UPPER_RIGHT);
-				Quick.Warning ("Not enough fund/science to Revert to Launch");
+				ScreenMessages.PostScreenMessage (string.Format ("[{0}] You have no suffisant money to Revert to Launch.", QuickRevert.MOD), 10, ScreenMessageStyle.UPPER_RIGHT);
+				QuickRevert.Warning ("Not enough fund/science to Revert to Launch");
 			}
-			CanRevert = Pay (RevertType.EDITOR, out _cre, out _rep, out _sci);
-			if (CanRevert == 1) {
-				Quick.Warning ("Revert to Editor will cost you :" + msgCost (_cre, _rep, _sci));
-			} else if (CanRevert == 0) {
+			_CanRevert = Pay (RevertType.EDITOR, out _cre, out _rep, out _sci);
+			if (_CanRevert == 1) {
+				if (lastLaunch != FlightGlobals.ActiveVessel.id) {
+					QuickRevert.Warning ("Revert to Editor will cost you :" + msgCost (_cre, _rep, _sci));
+				}
+			} else if (_CanRevert == 0) {
 				FlightDriver.CanRevertToPrelaunch = false;
 				CanRevertToPrelaunch = false;
-				ScreenMessages.PostScreenMessage (string.Format ("[{0}] You have no suffisant money to Revert to Editor.", Quick.MOD), 10, ScreenMessageStyle.UPPER_RIGHT);
-				Quick.Warning ("Not enough fund/science to Revert to Launch");
+				ScreenMessages.PostScreenMessage (string.Format ("[{0}] You have no suffisant money to Revert to Editor.", QuickRevert.MOD), 10, ScreenMessageStyle.UPPER_RIGHT);
+				QuickRevert.Warning ("Not enough fund/science to Revert to Launch");
 			}
+			lastLaunch = FlightGlobals.ActiveVessel.id;
 		}
 
 		internal static void OnRevertPopup(PopupDialog popup) {
 			string _message = "Revert will cost you, for a:" + Environment.NewLine;
-			if (FlightDriver.CanRevertToPrelaunch && FlightDriver.PreLaunchState != null) {
+			if (FlightDriver.CanRevertToPostInit && FlightDriver.PostInitState != null) {
 				string _msgCostLaunch = msgCost (Cost (RevertType.LAUNCH, Currency.Funds), Cost (RevertType.LAUNCH, Currency.Reputation), Cost (RevertType.LAUNCH, Currency.Science), true);
 				_message += "- revert to launch:" + _msgCostLaunch + Environment.NewLine;
 			}
-			if (FlightDriver.CanRevertToPostInit && FlightDriver.PostInitState != null) {
+			if (FlightDriver.CanRevertToPrelaunch && FlightDriver.PreLaunchState != null) {
 				string _msgCostEditor = msgCost (Cost (RevertType.EDITOR, Currency.Funds), Cost (RevertType.EDITOR, Currency.Reputation), Cost (RevertType.EDITOR, Currency.Science), true);
 				_message += "- revert to editor:" + _msgCostEditor + Environment.NewLine;
 
 			}
-			popup.dialogToDisplay.title = string.Format ("[{0}] Reverting Flight", Quick.MOD);
+			popup.dialogToDisplay.title = string.Format ("[{0}] Reverting Flight", QuickRevert.MOD);
 			popup.dialogToDisplay.message = _message;
+		}
+
+		internal static IEnumerator OnRevertPopup () {
+			while (FlightDriver.Pause) {
+				PopupDialog _popup = (PopupDialog)PopupDialog.FindObjectOfType (typeof(PopupDialog));
+				if (_popup != null) {
+					if (_popup.dialogToDisplay != null) {
+						if (_popup.enabled && _popup.dialogToDisplay.title == "Reverting Flight") {
+							OnRevertPopup (_popup);
+						}
+					}
+				}
+				yield return new WaitForEndOfFrame ();
+			}
 		}
 	}
 }
