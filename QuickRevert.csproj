@@ -8,7 +8,7 @@
     <RootNamespace>QuickRevert</RootNamespace>
     <AssemblyName>QuickRevert</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
-    <ReleaseVersion>2.10</ReleaseVersion>
+    <ReleaseVersion>2.11</ReleaseVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

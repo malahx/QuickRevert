@@ -28,6 +28,6 @@ Global
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		description = @#### QuickRevert\n#### A plugin for Kerbal Space Program\n#### Copyright 2015 Malah
-		version = 2.10
+		version = 2.11
 	EndGlobalSection
 EndGlobal

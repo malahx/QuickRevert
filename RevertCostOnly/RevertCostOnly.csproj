@@ -7,7 +7,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>RevertCostOnly</RootNamespace>
     <AssemblyName>QuickRevert</AssemblyName>
-    <ReleaseVersion>2.10</ReleaseVersion>
+    <ReleaseVersion>2.11</ReleaseVersion>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

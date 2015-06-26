@@ -1,5 +1,5 @@
 ﻿#### QuickRevert
-#### A plugin for Kerbal Space Program 1.0.2
+#### A plugin for Kerbal Space Program 1.0.X
 #### Copyright 2015 Malah
 
 This program is free software: you can redistribute it and/or modify
@@ -24,16 +24,17 @@ QuickRevert is a small plugin which adds the possibility to keep/pay the revert 
 
 You will lose the revert function if:
 * you launch a new vessel,
-* you stand too long (15 mins) outside the vessel (space center, tracking station, another vessel ...),
-* you can't pay a revert (only for career).
+* you stand too long (15 mins) outside the vessel (space center, tracking station, another vessel ...), it can be disabled,
+* you can't pay a revert (only for career), it can be disabled.
 
 You will keep the revert function if:
 * you go to the space center or on another vessel,
 * you make a quickload,
-* KSP crash,
+* your KSP crash,
 * you stop your game,
-* the launched vessel is loaded,
-* you are on EVA.
+* your launched vessel is loaded,
+* your launched vessel is in prelaunch.
+* you are on EVA,
 
 #### How to install it?
 
@@ -49,8 +50,25 @@ Delete the QuickRevert folder in your KSP/GameData folder.
 
 #### Changelog
 
-v2.01 - 2015.05.X
-* Fix: Corrected the Stock Toolbar which can show two buttons,
+v2.11 - 2015.06.26
+* Fix: Deleted the debug warning.
+
+v2.10 - 2015.06.25
+* New: Added an option to change the minimal price of a revert,
+* New: Added a maximal price of a revert (by default 200% of the cost of a revert),
+* New: Added an auto hide the stock toolbar if the revert is disabled for the current game,
+* New: Added a button to go to the revert's saved vessel from the Space Center,
+* Fix: Corrected the Stock Toolbar,
+* Fix: Corrected the lose of the revert after a restart/crash of KSP,
+* Fix: Corrected the lose of the revert if the revert to editor is not saved,
+* Fix: Corrected the revert price when it is influenced by the VesselCost,
+* Fix: Corrected the cost of a revert to editor after many revert to launch,
+* Fix: Corrected the load of the revert after a switch of the vessel,
+* Fix: Corrected the reset of the revert after a recover of the vessel,
+* Fix: Changed the default minimal price to 50% of the cost of a revert,
+* Fix: Changed the default reputation price to 5,
+* Fix: Changed the default science price to 1,
+* Fix: Some minor bug.
 
 v2.00 - 2015.05.04
 * New: Added the revert cost,

@@ -3,8 +3,20 @@
 	"URL": "https://raw.githubusercontent.com/malahx/QuickRevert/master/QuickRevert.version",
 	"CHANGE_LOG_URL": "https://raw.githubusercontent.com/malahx/QuickRevert/master/README.md", 
 	"DOWNLOAD": "https://kerbalstuff.com/mod/237"
-	"VERSION":{"MAJOR":21,"MINOR":0,"PATCH":1,"BUILD":0},
-	"KSP_VERSION": "1.0.2",
-	"KSP_VERSION_MIN": "1.0.0",
-	"KSP_VERSION_MAX": "1.0.2"
+	"VERSION":{"MAJOR":2,"MINOR":1,"PATCH":1,"BUILD":0},
+    "KSP_VERSION": {
+        "MAJOR": 1,
+        "MINOR": 0,
+        "PATCH": 4
+    },
+    "KSP_VERSION_MIN": {
+        "MAJOR": 1,
+        "MINOR": 0,
+        "PATCH": 0
+    },
+    "KSP_VERSION_MAX": {
+        "MAJOR": 1,
+        "MINOR": 0,
+        "PATCH": -1
+    }
 }

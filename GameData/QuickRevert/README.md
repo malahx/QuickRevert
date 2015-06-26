@@ -50,6 +50,9 @@ Delete the QuickRevert folder in your KSP/GameData folder.
 
 #### Changelog
 
+v2.11 - 2015.06.26
+* Fix: Deleted the debug warning.
+
 v2.10 - 2015.06.25
 * New: Added an option to change the minimal price of a revert,
 * New: Added a maximal price of a revert (by default 200% of the cost of a revert),
