@@ -7,7 +7,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>RevertCostOnly</RootNamespace>
     <AssemblyName>QuickRevert</AssemblyName>
-    <ReleaseVersion>2.11</ReleaseVersion>
+    <ReleaseVersion>2.12</ReleaseVersion>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -37,10 +37,10 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\lib\1.0.4\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\lib\1.0.5.1028\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\lib\1.0.4\UnityEngine.dll</HintPath>
+      <HintPath>..\..\lib\1.0.5.1028\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

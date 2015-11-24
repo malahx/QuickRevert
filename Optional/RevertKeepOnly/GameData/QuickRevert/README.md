@@ -50,6 +50,9 @@ Delete the QuickRevert folder in your KSP/GameData folder.
 
 #### Changelog
 
+v2.12 - 2015.11.24
+* Fix: Compiled against KSP 1.0.5
+
 v2.11 - 2015.06.26
 * Fix: Deleted the debug warning.
 
