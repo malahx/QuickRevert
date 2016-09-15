@@ -1,6 +1,6 @@
 ﻿/* 
 QuickRevert
-Copyright 2015 Malah
+Copyright 2016 Malah
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,49 +16,36 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 */
 
-using System;
 using System.IO;
-using UnityEngine;
 
 namespace QuickRevert {
-	public class QSettings : MonoBehaviour {
+	public class QSettings : QuickRevert {
 
-		public readonly static QSettings Instance = new QSettings();
+		[KSPField(isPersistant = true)]	private static readonly QSettings instance = new QSettings ();
+		public static QSettings Instance {
+			get {
+				if (!instance.isLoaded) {
+					instance.Load ();
+				}
+				return instance;
+			}
+		}
+		internal static string FileConfig = KSPUtil.ApplicationRootPath + "GameData/" + MOD + "/Config.txt";
 
-		internal static string FileConfig = KSPUtil.ApplicationRootPath + "GameData/" + QuickRevert.MOD + "/Config.txt";
+		[KSPField(isPersistant = true)]	private bool isLoaded = false;
 
-		#if GUI
+		[Persistent] internal bool Debug = true;
+
 		[Persistent] public bool StockToolBar = true;
 		[Persistent] public bool BlizzyToolBar = true;
-		#endif
 
-		[Persistent] public bool EnableRevertLoss = true;
-
-		#if KEEP
-		[Persistent] public int TimeToKeep = 900;
-		#endif
-
-		#if COST
-		[Persistent] public bool RevertCost = true;
-		[Persistent] public bool Credits = true;
-		[Persistent] public bool Sciences = false;
-		[Persistent] public bool Reputations = false;
-		[Persistent] public int CreditsCost = 1000;
-		[Persistent] public int ReputationsCost = 5;
-		[Persistent] public int SciencesCost = 1;
-		[Persistent] public float RevertToLaunchFactor = 0.75f;
-		[Persistent] public bool CostFctReputations = true;
-		[Persistent] public bool CostFctVessel = true;
-		[Persistent] public bool CostFctPenalties = true;
-		[Persistent] public float VesselBasePrice = 50000;
-		[Persistent] public float MinPriceFactor = 0.50f;
-		[Persistent] public float MaxPriceFactor = 2.00f;
-		#endif
+		[Persistent] public bool EnableRevertLoss = false;
+		[Persistent] public bool EnableRevertKeep = true;
 
 		public void Save() {
 			ConfigNode _temp = ConfigNode.CreateConfigFromObject(this, new ConfigNode());
 			_temp.Save(FileConfig);
-			QuickRevert.Log ("Settings Saved");
+			Log ("Settings Saved", "QSettings", true);
 		}
 
 		public void Load() {
@@ -66,13 +53,14 @@ namespace QuickRevert {
 				try {
 					ConfigNode _temp = ConfigNode.Load (FileConfig);
 					ConfigNode.LoadObjectFromConfig (this, _temp);
-					QuickRevert.Log ("Settings Loaded");
+					Log ("Settings Loaded", "QSettings", true);
 				} catch {
 					Save ();
 				}
 			} else {
 				Save ();
 			}
+			isLoaded = true;
 		}
 	}
 }

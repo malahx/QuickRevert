@@ -1,6 +1,6 @@
 ﻿/* 
 QuickRevert
-Copyright 2015 Malah
+Copyright 2016 Malah
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,13 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 */
 
-using System;
-using System.Collections;
+using KSP.UI.Screens;
 using UnityEngine;
 
 namespace QuickRevert {
-	[KSPAddon(KSPAddon.Startup.MainMenu, true)]
-	public class QStockToolbar : MonoBehaviour {
+	public partial class QStockToolbar  {
 
 		internal static bool Enabled {
 			get {
@@ -37,10 +35,10 @@ namespace QuickRevert {
 		}
 		
 		internal ApplicationLauncher.AppScenes AppScenes = ApplicationLauncher.AppScenes.SPACECENTER;
-		private static string TexturePath = QuickRevert.MOD + "/Textures/StockToolBar";
+		private static string TexturePath = MOD + "/Textures/StockToolBar";
 
 		private void OnClick() { 
-			QGUI.Settings ();
+			QGUI.Instance.Settings ();
 		}
 			
 		private Texture2D GetTexture {
@@ -62,7 +60,7 @@ namespace QuickRevert {
 			private set;
 		}
 
-		private void Awake() {
+		protected override void Awake() {
 			if (Instance != null) {
 				Destroy (this);
 				return;
@@ -72,16 +70,19 @@ namespace QuickRevert {
 			GameEvents.onGUIApplicationLauncherReady.Add (AppLauncherReady);
 			GameEvents.onGUIApplicationLauncherDestroyed.Add (AppLauncherDestroyed);
 			GameEvents.onLevelWasLoadedGUIReady.Add (AppLauncherDestroyed);
-			QuickRevert.Warning ("QStockToolbar.Awake", true);
+			Log ("Awake", "QStockToolbar");
+		}
+
+		protected override void Start() {
+			Log ("Start", "QStockToolbar");
 		}
 			
 		private void AppLauncherReady() {
-			QSettings.Instance.Load ();
 			if (!Enabled) {
 				return;
 			}
 			Init ();
-			QuickRevert.Warning ("QStockToolbar.AppLauncherReady", true);
+			Log ("AppLauncherReady", "QStockToolbar");
 		}
 
 		private void AppLauncherDestroyed(GameScenes gameScene) {
@@ -89,19 +90,19 @@ namespace QuickRevert {
 				return;
 			}
 			Destroy ();
-			QuickRevert.Warning ("QStockToolbar.onLevelWasLoadedGUIReady", true);
+			Log ("onLevelWasLoadedGUIReady", "QStockToolbar");
 		}
 		
 		private void AppLauncherDestroyed() {
 			Destroy ();
-			QuickRevert.Warning ("QStockToolbar.onGUIApplicationLauncherDestroyed", true);
+			Log ("onGUIApplicationLauncherDestroyed", "QStockToolbar");
 		}
 
-		private void OnDestroy() {
+		protected override void OnDestroy() {
 			GameEvents.onGUIApplicationLauncherReady.Remove (AppLauncherReady);
 			GameEvents.onGUIApplicationLauncherDestroyed.Remove (AppLauncherDestroyed);
 			GameEvents.onLevelWasLoadedGUIReady.Remove (AppLauncherDestroyed);
-			QuickRevert.Warning ("QStockToolbar.OnDestroy", true);
+			Log ("OnDestroy", "QStockToolbar");
 		}
 
 		internal void Init() {
@@ -111,7 +112,7 @@ namespace QuickRevert {
 			if (appLauncherButton == null) {
 				appLauncherButton = ApplicationLauncher.Instance.AddModApplication (OnClick, OnClick, null, null, null, null, AppScenes, GetTexture);
 			}
-			QuickRevert.Warning ("QStockToolbar.Init", true);
+			Log ("Init", "QStockToolbar");
 		}
 
 		internal void Destroy() {
@@ -120,7 +121,7 @@ namespace QuickRevert {
 			}
 			ApplicationLauncher.Instance.RemoveModApplication (appLauncherButton);
 			appLauncherButton = null;
-			QuickRevert.Warning ("QStockToolbar.Destroy", true);
+			Log ("Destroy", "QStockToolbar");
 		}
 
 		internal void Set(bool SetTrue, bool force = false) {
@@ -129,16 +130,16 @@ namespace QuickRevert {
 			}
 			if (appLauncherButton != null) {
 				if (SetTrue) {
-					if (appLauncherButton.State == RUIToggleButton.ButtonState.FALSE) {
+					if (appLauncherButton.toggleButton.CurrentState == KSP.UI.UIRadioButton.State.False) {
 						appLauncherButton.SetTrue (force);
 					}
 				} else {
-					if (appLauncherButton.State == RUIToggleButton.ButtonState.TRUE) {
+					if (appLauncherButton.toggleButton.CurrentState == KSP.UI.UIRadioButton.State.True) {
 						appLauncherButton.SetFalse (force);
 					}
 				}
 			}
-			QuickRevert.Warning ("QStockToolbar.Set", true);
+			Log ("Set " + SetTrue + " force: " + force, "QStockToolbar");
 		}
 
 		internal void Reset() {
@@ -151,7 +152,7 @@ namespace QuickRevert {
 			if (Enabled) {
 				Init ();
 			}
-			QuickRevert.Warning ("QStockToolbar.Reset", true);
+			Log ("Reset", "QStockToolbar");
 		}
 	}
 }

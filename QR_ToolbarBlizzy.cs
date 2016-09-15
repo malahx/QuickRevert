@@ -1,6 +1,6 @@
 ﻿/* 
 QuickRevert
-Copyright 2015 Malah
+Copyright 2016 Malah
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,11 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 */
 
-using System;
-using UnityEngine;
-
 namespace QuickRevert {
-	public class QBlizzyToolbar {
+	public class QBlizzyToolbar : QuickRevert {
 	
 		internal bool Enabled {
 			get {
@@ -32,7 +29,8 @@ namespace QuickRevert {
 			GameScenes.SPACECENTER
 		};
 		private void OnClick() { 
-			QGUI.Settings ();
+			QGUI.Instance.Settings ();
+			Log ("OnClick", "QBlizzyToolbar");
 		}
 
 		private IButton Button;
@@ -43,31 +41,34 @@ namespace QuickRevert {
 			}
 		}
 
-		internal void Start() {
+		internal void Init() {
 			if (!HighLogic.LoadedSceneIsGame || !isAvailable || !Enabled || Button != null) {
 				return;
 			}
-			Button = ToolbarManager.Instance.add (QuickRevert.MOD, QuickRevert.MOD);
+			Button = ToolbarManager.Instance.add (MOD, MOD);
 			Button.TexturePath = TexturePath;
-			Button.ToolTip = QuickRevert.MOD + ": Settings";
+			Button.ToolTip = MOD + ": Settings";
 			Button.OnClick += (e) => OnClick ();
 			Button.Visibility = new GameScenesVisibility(AppScenes);
+			Log ("Init", "QBlizzyToolbar");
 		}
 
-		internal void OnDestroy() {
+		internal void Destroy() {
 			if (!isAvailable || Button == null) {
 				return;
 			}
 			Button.Destroy ();
 			Button = null;
+			Log ("Destroy", "QBlizzyToolbar");
 		}
 
 		internal void Reset() {
 			if (Enabled) {
-				Start ();
+				Init ();
 			} else {
 				OnDestroy ();
 			}
+			Log ("Reset", "QBlizzyToolbar");
 		}
 	}
 }

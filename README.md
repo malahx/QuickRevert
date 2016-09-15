@@ -1,6 +1,6 @@
 ﻿#### QuickRevert
-#### A plugin for Kerbal Space Program 1.0.X
-#### Copyright 2015 Malah
+#### A plugin for Kerbal Space Program
+#### Copyright 2016 Malah
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,23 +18,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #### What is it?
 
-QuickRevert is a small plugin which adds the possibility to keep/pay the revert function.
+QuickRevert is a small plugin which adds the possibility to keep the revert function.
 
 #### How does it work?
 
 You will lose the revert function if:
 * you launch a new vessel,
-* you stand too long (15 mins) outside the vessel (space center, tracking station, another vessel ...), it can be disabled,
-* you can't pay a revert (only for career), it can be disabled.
+* (optionnal) you can lose the revert if you escape the atmosphere.
 
 You will keep the revert function if:
 * you go to the space center or on another vessel,
 * you make a quickload,
 * your KSP crash,
 * you stop your game,
-* your launched vessel is loaded,
-* your launched vessel is in prelaunch.
-* you are on EVA,
+* you are gone to EVA,
 
 #### How to install it?
 
@@ -49,6 +46,14 @@ Unzip all files. Merge the new QuickRevert folder with the old folder which is i
 Delete the QuickRevert folder in your KSP/GameData folder.
 
 #### Changelog
+
+v3.00 - 2016.09.15
+* New: Added a parameter to lost your revert if you escape the atmosphere of the home body (disabled by default),
+* Fix: Rewrite many functions,
+* Fix: Deleted all career functions,
+* Fix: Deleted all optionnal version of QuickRevert,
+* Fix: Enhanced the settings functions,
+* Compiled against KSP 1.2.0.1473
 
 v2.12 - 2015.11.24
 * Fix: Compiled against KSP 1.0.5
@@ -112,7 +117,7 @@ v1.00 - 2014.10.01
 #### Links
 
 * http://forum.kerbalspaceprogram.com/threads/95168#QuickRevert
-* https://kerbalstuff.com/mod/237
+* http://spacedock.info/mod/109/QuickRevert
 * http://kerbal.curseforge.com/ksp-mods/224621
 * https://github.com/malahx/QuickRevert
 * Faenza icon theme: http://gnome-look.org/content/show.php/Faenza?content=128143
