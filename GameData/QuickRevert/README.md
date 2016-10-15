@@ -47,6 +47,9 @@ Delete the QuickRevert folder in your KSP/GameData folder.
 
 #### Changelog
 
+v3.01 - 2016.10.15
+* Compiled against KSP 1.2.0.1586
+
 v3.00 - 2016.09.15
 * New: Added a parameter to lost your revert if you escape the atmosphere of the home body (disabled by default),
 * Fix: Rewrite many functions,
